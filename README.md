@@ -1,536 +1,241 @@
-# Lumen Lab
+# Lumen
 
-> Local-first, auditable decision support for turning explicit priorities into ranked missions, focused work, reviewable experiments, and reusable evidence.
+> A personal desktop assistant that learns what actually matters to you, turns that context into useful next actions, and gets more accurate as you use it.
 
-Lumen Lab is a Python system for structured self-directed work and R&D. It keeps the parts that should be predictable — identity, state, ranking, validation, safety gates, experiment history, and integrity checks — deterministic and inspectable. Optional LLMs can advise or enrich proposals, but they are not the source of truth and never receive automatic execution authority.
+Lumen is being built for people who do not want another task manager, another dashboard to configure, or a terminal full of commands.
 
-The project has two deliberately separate layers:
+The product goal is simple:
 
-- the **user product**, where each person gets an isolated local workspace under `.lumen/users/<user-id>/`;
-- the **repository laboratory**, where `state/` records Lumen's own experiments, outcomes, calibration evidence, provenance, and journal.
+> Open Lumen and get a useful answer to: **“What should I actually do next, given my goals, my current situation, and how I really behave?”**
 
-Installing Lumen must never make a new user inherit the repository owner's profile, missions, or work history.
+The desktop app is the primary product. The CLI remains available for development, testing, and power users, but it is not the intended user experience.
 
-## What Lumen is — and what it is not
+## What using Lumen feels like
 
-Lumen is not a trained model and not a hidden persona. Personalization comes from explicit local profile data, mission tags, deterministic ranking, and user-scoped state.
-
-Lumen is also not an unrestricted autonomous agent. Generated ideas are reviewable data, not authority. State-changing operations are explicit. Subprocess execution is allowlisted. Optional model output is validated. GitHub operations are separate, auditable capabilities.
-
-A useful mental model is:
+A new install starts with a short conversation instead of a settings form.
 
 ```text
-Lumen = deterministic control plane
-      + explicit local user state
-      + measured experiment loop
-      + optional bounded adapters
+What should I call you?
+↓
+What is taking most of your attention right now?
+↓
+What would you most like to be different a month from now?
+↓
+What usually gets in the way?          optional
+↓
+How much focused time feels realistic?
 ```
 
-The control plane remains useful with no API key, no model endpoint, and no network.
+Lumen turns those answers into a starting understanding of the person and immediately creates a first set of personalized missions.
 
-## Architecture
-
-```mermaid
-flowchart TD
-    U[User identity] --> P[Explicit local profile]
-    P --> M[User-scoped mission portfolio]
-    M --> R[Mission Radar]
-    R --> W[Focused work session]
-    R --> G[Proposal generator]
-    P --> G
-
-    G --> PREVIEW[Preview only]
-    PREVIEW --> REVIEW[Explicit review snapshot]
-    REVIEW --> ACCEPT[Explicit revalidated acceptance]
-    ACCEPT --> B[Experiment backlog]
-
-    B --> PLAN[Deterministic planner]
-    PLAN --> EXP[Bounded experiment]
-    EXP --> OUT[Outcome ledger]
-    OUT --> CAL[Calibration and ranking evidence]
-    OUT --> SYN[Synthesis]
-    EXP --> PROV[Provenance index]
-
-    APP[Application service] --> P
-    APP --> R
-    APP --> W
-    GUI[Future GUI / API client] --> APP
-
-    DOC[State doctor] -. validates .-> B
-    DOC -. validates .-> OUT
-    DOC -. validates .-> SYN
-    DOC -. validates .-> PROV
-
-    LLM[Optional LLM adapters] -. advice or enrichment only .-> G
-    LLM -. advice only .-> PLAN
-```
-
-The key trust boundary is **generation versus authority**. A deterministic generator or LLM may suggest a proposal, but a proposal is not an accepted experiment and an accepted experiment is not automatic execution.
-
-## Quick start
-
-Requirements: Python 3.11+.
-
-```bash
-python -m venv .venv
-```
-
-Activate the environment:
-
-```powershell
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
-```
-
-```bash
-# Linux / macOS
-source .venv/bin/activate
-```
-
-Install Lumen and development tooling:
-
-```bash
-python -m pip install -e ".[dev]"
-```
-
-Create an isolated local user:
-
-```powershell
-lumen-user --user alex init --name "Alex" --priority career=10 --priority health=7 --interest robotics --skill Python --constraint "5 hours per week"
-```
-
-Then use the same identity across the product commands:
-
-```powershell
-lumen-radar --user alex --top 3
-lumen-work --user alex
-lumen-work --user alex --done 1
-lumen-propose --user alex
-lumen-dashboard --user alex
-```
-
-Instead of repeating `--user`, set `LUMEN_USER_ID=alex`. If neither `--user` nor `LUMEN_USER_ID` is set, interactive commands resolve the local identity `default` and require that workspace to be initialized.
-
-For repository development, verify both code and state:
-
-```powershell
-pytest
-lumen-doctor
-```
-
-## The user product loop
-
-For a real user, the normal flow is:
+That first understanding is **not treated as permanent truth**. It is stored as a set of hypotheses with confidence and is updated from real usage.
 
 ```text
-explicit inputs
-    ↓
-local profile
-    ↓
-mission portfolio
-    ↓
-Mission Radar
-    ↓
-focused work session
-    ↓
-local progress
-
-profile + mission evidence
-    ↓
-proposal preview
-    ↓
-explicit review
-    ↓
-explicit acceptance
-    ↓
-experiment / outcome evidence
+first conversation
+      ↓
+starting hypotheses
+      ↓
+personalized missions
+      ↓
+what the user starts, finishes, postpones or rejects
+      ↓
+updated understanding
+      ↓
+better next recommendation
 ```
 
-The product never needs repository-owned `state/profile.json` to personalize a real user.
+The goal is for two people using the same application to gradually get genuinely different experiences.
 
-## Local user workspaces
+## Personalization without a manual
 
-Each user is isolated under:
+Lumen deliberately avoids exposing tuning controls such as priority weights, risk scores, or ranking coefficients to normal users.
+
+Instead, the app learns from lightweight actions:
+
+- **More like this** strengthens a preference;
+- **Less like this** weakens it;
+- **Not now** means timing is wrong, not that the underlying goal is unwanted;
+- completing meaningful work is a positive signal automatically;
+- repeated conflicting behavior can trigger one short clarification question instead of a silent guess.
+
+For example, if Lumen keeps suggesting 60-minute sessions and the user repeatedly postpones them, it can ask whether smaller steps would help and reduce the focus window automatically.
+
+## What the desktop app already has
+
+The current desktop application is built with React + Tauri on top of the Python Lumen engine.
+
+It currently includes:
+
+- conversational first-run onboarding;
+- isolated local state per user;
+- personalized mission ranking;
+- a daily “best next move”;
+- focused work sessions with progress;
+- low-friction preference feedback;
+- adaptive hypotheses with confidence;
+- clarification prompts when behavior contradicts the current model;
+- Activity and Profile views;
+- persistence across application restarts.
+
+The desktop shell, frontend build, Python bridge, and Tauri host are covered by CI.
+
+### Current distribution status
+
+Lumen is not yet published as a finished Windows installer. The application currently runs from the repository during development.
+
+The distribution goal is:
+
+```text
+Download Lumen
+→ Install
+→ Open
+→ 1–2 minute introduction
+→ Start using it
+```
+
+No Python, Node, Rust, PowerShell, or CLI should be required for the final user installation.
+
+See [Desktop application](docs/desktop-app.md).
+
+## Optional context connections
+
+The next product layer is opt-in context from services the user already uses.
+
+GitHub is the first planned connection. With explicit permission, Lumen can use project activity as evidence about what a person is actually working on instead of relying only on what they typed during onboarding.
+
+The intended experience is a normal application flow:
+
+```text
+Connect GitHub
+→ authorize in browser
+→ return to Lumen
+→ choose what Lumen may use
+```
+
+Connections must remain optional. A user should be able to use Lumen locally without connecting an external account.
+
+## Privacy and trust model
+
+Personalization only works if the user can trust what is happening.
+
+Lumen therefore follows a few product rules:
+
+1. **Each user has isolated state.** One person's profile, progress, and feedback are never used as another person's defaults.
+2. **The first conversation is a hypothesis, not a permanent profile.** Behavior can revise it.
+3. **External services are opt-in.** Lumen should explain what a connection contributes before asking for access.
+4. **Local state is the default.** Personal runtime data lives outside repository-owned experiment state.
+5. **Recommendations are explainable.** The system keeps the evidence used to rank work.
+6. **Models are not authority.** Optional LLM components may help interpret or generate suggestions, but validated product state remains the source of truth.
+7. **No hidden dependency on ChatGPT memory.** A fresh Lumen installation must work for a person the project has never seen before.
+
+A local user workspace lives under:
 
 ```text
 .lumen/users/<user-id>/
 ```
 
-A mature workspace can contain:
+Typical state includes the user's profile, onboarding context, missions, progress, feedback, and later integration evidence. The `.lumen/` runtime directory is ignored by Git.
+
+See [Personalization](docs/personalization.md) and [Profiles](docs/profiles.md).
+
+## How Lumen decides what to show
+
+Lumen separates three things that are easy to accidentally mix together:
 
 ```text
-.lumen/users/alex/
-├── profile.json
-├── missions.json
-├── work_sessions.json
-├── work_progress.json
-├── backlog.json
-├── outcomes.json
-└── journal.md
-```
-
-Only files that are actually needed are created. Onboarding creates the profile, starter missions, and matching work-session templates. Progress and experiment files appear as those flows are used.
-
-The entire `.lumen/` runtime area is machine-local and ignored by Git by default. Cross-user fallback is not allowed: selecting `alice` never silently reads `bob` or repository-owned profile state.
-
-See [Personalization](docs/personalization.md).
-
-## Onboarding and identity
-
-`lumen-user` is the explicit identity and onboarding boundary.
-
-```powershell
-lumen-user --user alex init --name "Alex" --priority ai=10 --priority career=9 --interest agents --skill Python --stack FastAPI --risk-tolerance 4
-lumen-user --user alex show
-lumen-user --user alex path
-lumen-user list
-```
-
-User IDs are validated before they become filesystem paths, including path-traversal protection.
-
-Onboarding is deterministic. It does not read hidden ChatGPT memory, account personalization, or repository-owner goals. Starter missions and work sessions are derived from the inputs supplied for that user.
-
-## Mission Radar
-
-`lumen-radar` ranks active missions using explicit mission inputs and optional profile alignment.
-
-```powershell
-lumen-radar --user alex
-lumen-radar --user alex --top 3
-lumen-radar --user alex --json
-```
-
-The base score is:
-
-```text
-base = 0.30 * impact
-     + 0.20 * urgency
-     + 0.25 * leverage
-     + 0.15 * momentum
-     + 0.10 * (11 - effort)
-     - 0.15 * risk
-```
-
-When a profile is available:
-
-```text
-alignment = highest weighted profile priority matching a mission tag
-            or neutral 5 when no tag matches
-
-profile_adjustment = 0.30 * (alignment - 5)
-risk_adjustment    = 0.10 * max(0, mission_risk - profile_risk_tolerance)
-
-personalized_score = clamp(base + profile_adjustment - risk_adjustment, 0, 10)
-```
-
-The JSON output keeps `base_score` and personalized `score` separate, so personalization remains inspectable.
-
-Reading the radar is non-mutating. It recommends work; it does not execute it.
-
-See [Mission Radar](docs/mission-radar.md).
-
-## Focused work sessions
-
-`lumen-work` turns a selected mission into a bounded session with ordered steps and a Definition of Done.
-
-```powershell
-lumen-work --user alex
-lumen-work --user alex --json
-lumen-work --user alex --done 2
-```
-
-Reading a session is write-free. `--done <step>` is an explicit progress write and changes only the selected user's local workspace.
-
-Lumen does not perform the listed steps on the user's behalf.
-
-See [Work sessions](docs/work-sessions.md).
-
-## Reviewable proposals
-
-`lumen-propose` turns profile and mission evidence into candidate experiments without automatically executing or accepting them.
-
-The lifecycle is intentionally multi-step:
-
-```text
-profile + missions + evidence
+what the user explicitly told us
+          +
+what their behavior suggests
+          +
+what candidate work is currently available
           ↓
-      generate
-          ↓
-       preview          no state mutation
-          ↓
- explicit review file   deliberate write
-          ↓
- explicit acceptance    revalidation
-          ↓
- normal experiment backlog
+ranked recommendation
 ```
 
-Normal interactive use is user-scoped:
+The ranking engine is deterministic and inspectable. Feedback can shift the ranking, but normal usage does not silently rewrite the entire profile after one click.
 
-```powershell
-lumen-propose --user alex
-lumen-propose --user alex --json
+This is especially important for signals like **Not now**. Postponing a task is evidence about timing, not necessarily evidence that the user no longer cares about the goal.
+
+See [Mission Radar](docs/mission-radar.md), [Ranking](docs/ranking.md), and [Work sessions](docs/work-sessions.md).
+
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[Desktop app\nReact + Tauri] --> BRIDGE[Desktop bridge]
+    BRIDGE --> APP[Lumen application service]
+
+    APP --> CONTEXT[User context\nanswers + hypotheses]
+    APP --> PROFILE[User profile]
+    APP --> FEEDBACK[Behavior signals]
+    APP --> MISSIONS[Mission portfolio]
+
+    CONTEXT --> RANK[Personalized ranking]
+    PROFILE --> RANK
+    FEEDBACK --> RANK
+    MISSIONS --> RANK
+
+    RANK --> TODAY[Best next move]
+    TODAY --> WORK[Focused session]
+    WORK --> FEEDBACK
+
+    EXT[Optional integrations\nGitHub, later others] -. user-authorized evidence .-> CONTEXT
 ```
 
-The default deterministic path requires no model and no network. A profile can opt into OpenAI-compatible enrichment, but model output is constrained by the same proposal schema, evidence references, duplicate guards, risk tolerance, and candidate limit.
+The GUI is intentionally thin. Core identity, personalization, ranking, progress, and state rules live behind `LumenApplication` so the product does not develop a second, contradictory personalization model in the frontend.
 
-There is intentionally no single operation where a fresh model response can generate and immediately accept itself.
+See [Application service](docs/application-service.md) and [Architecture](docs/architecture.md).
 
-Supplying a repository root explicitly without a user remains a developer/test path for maintaining Lumen's own lab state.
-
-See [Proposal generation](docs/proposals.md).
-
-## Application service and GUI boundary
-
-The project is CLI-first today, but the GUI contract is already explicit. `LumenApplication` is the presentation-facing facade, so a future desktop or web client does not reimplement identity resolution, onboarding, ranking, progress updates, or recommendation explanations.
-
-A client starts with:
-
-```python
-from pathlib import Path
-from lumen_lab.app_service import LumenApplication
-
-app = LumenApplication(Path.cwd())
-payload = app.bootstrap("alex")
-```
-
-The versioned bootstrap payload includes:
-
-- `schema_version`;
-- `selected_user_id`;
-- `initialized`;
-- known initialized local users for switching;
-- the selected user's dashboard when initialized.
-
-That gives a client one deterministic route decision: onboarding if `initialized` is false, dashboard otherwise.
-
-The application service also exposes onboarding, dashboard rendering, and progress completion. The GUI should call this service instead of reading `.lumen/` directly.
-
-A temporary CLI bridge exposes the same dashboard data:
-
-```powershell
-lumen-dashboard --user alex
-lumen-dashboard --user alex --json
-lumen-dashboard --user alex --done 1 --json
-```
-
-See [Application service](docs/application-service.md).
-
-## Repository laboratory
-
-The repository itself is also a controlled R&D loop for improving Lumen. Its state lives in `state/` and is intentionally separate from real users.
-
-Core lifecycle:
-
-```text
-backlog → active → done
-               ↘ dropped
-```
-
-Each experiment stores a hypothesis and five dimensions from 1 to 10:
-
-- impact;
-- learning;
-- feasibility;
-- novelty;
-- risk.
-
-Priority is deterministic:
-
-```text
-experiment_score = 0.35 * impact
-                 + 0.30 * learning
-                 + 0.20 * feasibility
-                 + 0.15 * novelty
-                 - 0.25 * risk
-```
-
-Useful commands:
-
-```powershell
-lumen status
-lumen next
-lumen ledger
-```
-
-The internal deterministic backlog is currently complete; `state/backlog.json` remains the audit trail for the experiments that built the current system.
-
-## Outcomes and calibration
-
-Completed experiments record expected score, observed value, learning value, and a result summary in `state/outcomes.json`.
-
-Lumen deliberately separates several questions:
-
-```powershell
-lumen-calibrate
-lumen-rankcheck
-lumen-intercept
-lumen-holdout
-```
-
-- `lumen-calibrate` checks absolute prediction residuals;
-- `lumen-rankcheck` evaluates relative ordering quality;
-- `lumen-intercept` evaluates an advisory global score offset without changing ranking weights;
-- `lumen-holdout` evaluates later outcomes against the frozen calibration baseline without refitting it.
-
-Live evidence should be read from the repository state rather than copied into README numbers that will go stale.
-
-See [Calibration](docs/calibration.md), [Ranking](docs/ranking.md), [Intercept calibration](docs/intercept_calibration.md), and [Frozen holdout](docs/frozen_calibration_holdout.md).
-
-## Synthesis and provenance
-
-`state/journal.md` is the append-only narrative history of the lab. `state/SYNTHESIS.md` is a deterministic derived view over structured state and journal metadata.
-
-```powershell
-lumen-synthesize
-lumen-synthesize --write
-```
-
-Synthesis is not model-generated semantic truth. Its signals are intentionally inspectable and reproducible.
-
-`state/provenance.json` links completed experiments to primary repository artifacts:
-
-```powershell
-lumen-provenance
-lumen-provenance --experiment exp-019
-lumen-provenance --json
-```
-
-See [Synthesis](docs/synthesis.md) and [Provenance](docs/provenance.md).
-
-## State integrity and schema evolution
-
-Autonomous work becomes unsafe when state files silently disagree. `lumen-doctor` is a read-only cross-file integrity checker.
-
-```powershell
-lumen-doctor
-```
-
-It validates experiment/outcome lifecycle links, candidate registry state, calibration baseline membership, holdout evaluation, provenance completeness, synthesis freshness, and schema compatibility.
-
-The doctor detects problems; it does not repair them automatically.
-
-Persisted repository state also has explicit schema metadata:
-
-```powershell
-lumen-schema
-lumen-schema --json
-```
-
-Migration is explicit and fail-closed. The current legacy migration creates only schema metadata after validating managed files; it does not silently rewrite payloads.
-
-See [State doctor](docs/state-doctor.md) and [State schema versioning](docs/state-schema-versioning.md).
-
-## Backlog replenishment
-
-The curated repository-owned candidate path remains available:
-
-```powershell
-lumen replenish
-lumen replenish --apply
-```
-
-It is dry-run by default, refuses to replenish while pending work exists, validates normal experiment schemas, and never overwrites an existing experiment ID.
-
-This is distinct from `lumen-propose`: replenishment uses `state/candidates.json`, while proposal generation adapts ideas to explicit profile and mission evidence and requires review.
-
-See [Replenishment](docs/replenishment.md) and [Candidate registry](docs/candidate_registry.md).
-
-## Optional planner advice
-
-The deterministic planner remains authoritative. `lumen advise` can optionally ask an OpenAI-compatible model to recommend among existing backlog IDs.
-
-A model response is validated against the real backlog and failures fall back to deterministic planning. The model cannot create an authoritative experiment simply by naming one.
-
-See [LLM planner](docs/llm-planner.md).
-
-## Controlled subprocess experiments
-
-Lumen can run explicitly allowed commands in a constrained temporary workspace through `lumen sandbox`.
-
-```powershell
-lumen sandbox --allow python --timeout 2 --max-output-bytes 4096 --json -- python -c "print('hello')"
-```
-
-Named policies are available through:
-
-```powershell
-lumen-capabilities list
-```
-
-The runner uses `shell=False`, bare-executable allowlists, a fresh temporary directory, a minimal environment, disabled stdin, timeouts, and bounded captured output.
-
-This is **process containment, not an OS security sandbox**. An allowed process still has the operating-system permissions of the current user and can potentially access absolute paths, use the network, consume resources, or spawn descendants. Hostile code requires a real container, VM, or OS-enforced sandbox.
-
-See [Sandbox](docs/sandbox.md) and [Capability manifests](docs/capabilities.md).
-
-## GitHub integration and branch hygiene
-
-Repository experiments can be mirrored to GitHub Issues with explicit ownership markers. The bridge is dry-run first and does not modify unmanaged issues.
-
-See [GitHub Issues bridge](docs/github-issues-bridge.md).
-
-Merged development branches are cleaned by a conservative repository workflow. It preserves `main`, protected branches, open-PR heads, and unrelated work in progress, and removes only merged or explicitly superseded same-repository branches. This keeps the repository readable without broad branch deletion rules.
-
-## CLI reference
-
-The installed console entry points are:
-
-| Command | Purpose |
-| --- | --- |
-| `lumen` | Repository lab status, planning, lifecycle, replenishment, sandbox, and optional advice. |
-| `lumen-user` | Create, inspect, list, and resolve isolated local user workspaces. |
-| `lumen-radar` | Rank the selected user's active missions. |
-| `lumen-work` | Render a focused work session and explicitly record progress. |
-| `lumen-propose` | Generate, review, and accept bounded experiment proposals. |
-| `lumen-dashboard` | Render the application-service dashboard as human or JSON output. |
-| `lumen-calibrate` | Inspect planner residual calibration. |
-| `lumen-rankcheck` | Inspect pairwise experiment ranking quality. |
-| `lumen-intercept` | Evaluate an advisory additive calibration intercept. |
-| `lumen-holdout` | Evaluate the frozen calibration baseline on later outcomes. |
-| `lumen-synthesize` | Preview or write deterministic synthesis. |
-| `lumen-capabilities` | Audit or run named sandbox capability manifests. |
-| `lumen-doctor` | Validate repository state integrity without repair. |
-| `lumen-provenance` | Inspect completed-experiment evidence links. |
-| `lumen-schema` | Inspect or explicitly migrate repository state schema metadata. |
-
-All commands are declared in `pyproject.toml`; CI includes a README contract test so this table cannot silently drift away from the installed entry points.
-
-## Repository map
+## Repository structure
 
 ```text
 lumen-lab/
-├── .github/workflows/        CI and repository automation
-├── docs/                     architecture, contracts, trust boundaries
-├── src/lumen_lab/            product and lab implementation
+├── apps/desktop/             React + Tauri desktop application
+├── src/lumen_lab/            personalization and application engine
+├── docs/                     architecture and deeper technical documentation
+├── tests/                    product and safety behavior contracts
 ├── state/                    repository-owned R&D evidence
-├── tests/                    executable behavior contracts
-└── .lumen/users/             ignored machine-local user state at runtime
+└── .lumen/users/             machine-local user data at runtime
 ```
 
-Important boundaries:
+`state/` and `.lumen/users/` are deliberately different things:
 
-- `src/lumen_lab/workspace.py` — identity resolution and isolated user paths;
-- `src/lumen_lab/personalization.py` — deterministic onboarding into starter missions and work sessions;
-- `src/lumen_lab/app_service.py` — stable application-facing boundary for GUI/API clients;
-- `state/` — Lumen's own repository experiment evidence, not universal user data;
-- `.lumen/users/` — local personal state, ignored by Git;
-- `tests/` — behavior and safety contracts, including cross-user isolation.
+- `state/` describes experiments used to develop Lumen itself;
+- `.lumen/users/` contains a real person's local product state.
 
-## Safety and privacy principles
+Installing Lumen must never make a new user inherit the repository owner's profile or history.
 
-1. **Explicit user boundary.** No cross-user profile or progress fallback.
-2. **Local personal state.** User workspaces are ignored by Git by default.
-3. **No hidden personalization dependency.** Core behavior does not require ChatGPT memory or account metadata.
-4. **Deterministic authority.** Optional model output is validated and remains advisory or review-gated.
-5. **Explicit mutation.** Reading and ranking should not mutate state; writes require deliberate commands.
-6. **No exaggerated sandbox claims.** Process containment is documented as weaker than OS isolation.
-7. **Evidence before automation.** Outcomes, provenance, tests, and journal history remain inspectable.
-8. **No mandatory secrets.** Normal CI and deterministic product flows require no external credentials.
+## Running the desktop app from source
 
-## Development and CI
+This section is for contributors while the installer is still being built.
 
-Run locally:
+Requirements:
+
+- Python 3.11+
+- Node.js
+- Rust toolchain required by Tauri
+
+Install the Python project:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+```
+
+Install the desktop frontend and launch the development application:
+
+```powershell
+cd apps\desktop
+npm install
+npm run tauri dev
+```
+
+The production goal is to remove these requirements from the end-user experience by packaging the Python engine with the desktop application.
+
+## Development
+
+Run the Python checks:
 
 ```powershell
 python -m pip install -e ".[dev]"
@@ -539,20 +244,46 @@ pytest
 lumen-doctor
 ```
 
-GitHub Actions runs the test/lint matrix on Python 3.11, 3.12, and 3.13. Changes should not merge with failing CI.
+Desktop checks live in the dedicated Desktop CI workflow and validate both the frontend build and the Tauri host.
 
-Tests cover the deterministic planner, personalization, cross-user isolation, mission ranking, work progress, proposal trust boundaries, calibration, provenance, schema health, branch hygiene, and application-service contracts.
+GitHub Actions also runs the Python test/lint matrix on Python 3.11, 3.12, and 3.13.
 
-## Deeper documentation
+## CLI for contributors and power users
 
-- [Personalization](docs/personalization.md)
-- [Application service](docs/application-service.md)
-- [Profiles](docs/profiles.md)
-- [Mission Radar](docs/mission-radar.md)
-- [Work sessions](docs/work-sessions.md)
+The CLI is useful for inspecting the engine, writing tests, debugging state, and working on Lumen's repository laboratory. It is not the expected onboarding path for normal users.
+
+Installed commands:
+
+| Command | Purpose |
+| --- | --- |
+| `lumen` | Repository-lab lifecycle, planning, replenishment, sandbox and optional advice. |
+| `lumen-user` | Inspect and manage isolated local user workspaces. |
+| `lumen-radar` | Inspect personalized mission ranking. |
+| `lumen-work` | Inspect or record focused work-session progress. |
+| `lumen-propose` | Generate and review bounded experiment proposals. |
+| `lumen-dashboard` | Inspect the application-service payload. |
+| `lumen-calibrate` | Inspect planner residual calibration. |
+| `lumen-rankcheck` | Inspect ranking quality. |
+| `lumen-intercept` | Evaluate an advisory calibration intercept. |
+| `lumen-holdout` | Evaluate the frozen calibration baseline. |
+| `lumen-synthesize` | Preview or write repository synthesis. |
+| `lumen-capabilities` | Inspect named capability manifests. |
+| `lumen-doctor` | Validate repository state integrity. |
+| `lumen-provenance` | Inspect completed-experiment evidence links. |
+| `lumen-schema` | Inspect or migrate repository state schema metadata. |
+
+All console entry points are declared in `pyproject.toml`, and CI checks that this README does not silently drift away from them.
+
+## Repository laboratory
+
+Lumen also uses its own repository as a controlled R&D loop. This is an engineering layer, not the user product.
+
+The lab contains deterministic planning, experiment outcomes, calibration, provenance, synthesis, state integrity checks, bounded subprocess execution, and GitHub issue tooling.
+
+Useful deeper references:
+
 - [Proposal generation](docs/proposals.md)
 - [Calibration](docs/calibration.md)
-- [Ranking](docs/ranking.md)
 - [Intercept calibration](docs/intercept_calibration.md)
 - [Frozen holdout](docs/frozen_calibration_holdout.md)
 - [Synthesis](docs/synthesis.md)
@@ -566,14 +297,27 @@ Tests cover the deterministic planner, personalization, cross-user isolation, mi
 - [Capability manifests](docs/capabilities.md)
 - [GitHub Issues bridge](docs/github-issues-bridge.md)
 
-## Direction
+## Where the project is going
 
-The core user boundary is now stable enough for a real application layer:
+The important product loop now exists:
 
 ```text
-user_id → profile → missions → work session → feedback
+meet the user
+→ form a starting understanding
+→ recommend useful work
+→ observe what actually happens
+→ update confidence
+→ ask when uncertain
+→ recommend better work
 ```
 
-`LumenApplication` already exposes onboarding, bootstrap, dashboard, explainability, and progress updates behind that boundary. The next UI should remain a thin presentation client over those contracts rather than inventing a second personalization or state model.
+The next major milestones are:
 
-The engineering goal is not maximum autonomy. It is useful, auditable assistance where every increase in capability preserves an explicit trust boundary.
+- opt-in GitHub context;
+- packaging the Python engine into the desktop build;
+- Windows installer and release artifacts;
+- clearer integration/privacy controls;
+- richer evidence-based recommendations;
+- visual polish and final design alignment.
+
+The long-term goal is not to make Lumen maximally autonomous. It is to make it **personally useful with as little configuration as possible**, while keeping the user's data, choices, and trust boundaries understandable.
