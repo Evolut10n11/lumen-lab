@@ -21,6 +21,7 @@ dev = [
 [project.scripts]
 lumen = "lumen_lab.cli:main"
 lumen-calibrate = "lumen_lab.calibration_cli:main"
+lumen-synthesize = "lumen_lab.synthesis_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

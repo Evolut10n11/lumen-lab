@@ -40,5 +40,12 @@
     "observed_value": 8,
     "learning_value": 10,
     "result": "Implemented a deterministic residual-based planner calibration checkpoint with sample-size gating, signed-bias classification, CLI reporting, tests, and documentation. The first five outcomes show systematic underprediction, so relative planner weights remain unchanged pending feature-level evidence."
+  },
+  {
+    "experiment_id": "exp-008",
+    "expected_score": 7.6,
+    "observed_value": 8,
+    "learning_value": 9,
+    "result": "Implemented a deterministic journal synthesis snapshot with evidence provenance, repeated lesson signals, ranked missing capabilities, preview-by-default CLI behavior, explicit write mode, tests, and documentation while preserving the append-only journal."
   }
 ]
