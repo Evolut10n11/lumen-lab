@@ -21,6 +21,7 @@ from .github_user_context import (
     load_github_snapshot,
     save_github_snapshot,
 )
+from .localization import locale_from_context, normalize_locale
 from .mission_radar import Mission, load_missions
 from .onboarding import (
     apply_focus_minutes,
@@ -50,26 +51,40 @@ def _selected_mission_id(
     app: LumenApplication,
     user_id: str | None,
     mission_id: str | None,
+    *,
+    locale: str,
 ) -> str:
     if mission_id:
         return mission_id
-    dashboard = app.dashboard(user_id)
+    dashboard = app.dashboard(user_id, locale=locale)
     today = dashboard.get("today")
     if not isinstance(today, dict) or not isinstance(today.get("mission_id"), str):
         raise ValueError("no active mission is available")
     return today["mission_id"]
 
 
+def _resolved_locale(
+    request_locale: object,
+    context: dict[str, Any] | None = None,
+) -> str:
+    if isinstance(request_locale, str) and request_locale.strip():
+        return normalize_locale(request_locale)
+    return locale_from_context(context)
+
+
 def _decorate_dashboard(
     app: LumenApplication,
     user_id: str | None,
     dashboard: dict[str, Any],
+    *,
+    locale: str,
 ) -> dict[str, Any]:
     workspace = app.workspace(user_id)
     context = load_onboarding_context(workspace.onboarding_context_path)
     github = load_github_snapshot(workspace.github_context_path)
+    dashboard["locale"] = locale
     dashboard["context"] = context
-    dashboard["clarification"] = clarification_for_context(context)
+    dashboard["clarification"] = clarification_for_context(context, locale=locale)
     dashboard["integrations"] = {
         "github": github_integration_payload(github),
     }
@@ -81,8 +96,14 @@ def _dashboard_with_context(
     user_id: str | None,
     *,
     top: int = 3,
+    locale: str = "en",
 ) -> dict[str, Any]:
-    return _decorate_dashboard(app, user_id, app.dashboard(user_id, top=top))
+    return _decorate_dashboard(
+        app,
+        user_id,
+        app.dashboard(user_id, top=top, locale=locale),
+        locale=locale,
+    )
 
 
 def _github_username(payload: dict[str, Any]) -> str:
@@ -110,9 +131,19 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
     app = LumenApplication(root)
     payload = _payload(request)
     action = action.strip().casefold()
+    request_locale = request.get("locale")
+    locale = _resolved_locale(request_locale)
 
     if action == "bootstrap":
-        result = app.bootstrap(user_id, top=int(payload.get("top", 3)))
+        workspace = UserWorkspace.from_root(root, user_id)
+        existing_context = (
+            load_onboarding_context(workspace.onboarding_context_path)
+            if workspace.initialized()
+            else None
+        )
+        locale = _resolved_locale(request_locale, existing_context)
+        result = app.bootstrap(user_id, top=int(payload.get("top", 3)), locale=locale)
+        result["locale"] = locale
         if result["initialized"]:
             workspace = app.workspace(result["selected_user_id"])
             context = load_onboarding_context(workspace.onboarding_context_path)
@@ -123,7 +154,12 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
                 )
             }
             if isinstance(result.get("dashboard"), dict):
-                _decorate_dashboard(app, result["selected_user_id"], result["dashboard"])
+                _decorate_dashboard(
+                    app,
+                    result["selected_user_id"],
+                    result["dashboard"],
+                    locale=locale,
+                )
         else:
             result["context"] = None
             result["integrations"] = {
@@ -132,7 +168,12 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         return result
 
     if action == "dashboard":
-        return _dashboard_with_context(app, user_id, top=int(payload.get("top", 3)))
+        return _dashboard_with_context(
+            app,
+            user_id,
+            top=int(payload.get("top", 3)),
+            locale=locale,
+        )
 
     if action == "guided_onboard":
         display_name = payload.get("display_name")
@@ -166,6 +207,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             interests=inputs["interests"],
             constraints=inputs["constraints"],
             replace=bool(payload.get("replace", False)),
+            locale=locale,
         )
         workspace = app.workspace(user_id)
         apply_focus_minutes(workspace.work_sessions_path, inputs["focus_minutes"])
@@ -174,9 +216,10 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             desired_change=desired_change,
             friction=friction,
             focus_minutes=inputs["focus_minutes"],
+            locale=locale,
         )
         save_onboarding_context(workspace.onboarding_context_path, context)
-        return _dashboard_with_context(app, user_id)
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "quick_onboard":
         display_name = payload.get("display_name")
@@ -192,8 +235,9 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             display_name=display_name,
             goals=goals,
             replace=bool(payload.get("replace", False)),
+            locale=locale,
         )
-        return _dashboard_with_context(app, user_id)
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "github_preview":
         app.workspace(user_id)
@@ -204,7 +248,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         snapshot = GitHubPublicContextClient().fetch(_github_username(payload))
         save_github_snapshot(workspace.github_context_path, snapshot)
         apply_github_evidence(workspace.onboarding_context_path, snapshot)
-        return _dashboard_with_context(app, user_id)
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "github_refresh":
         workspace = app.workspace(user_id)
@@ -218,13 +262,13 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         snapshot = GitHubPublicContextClient().fetch(username)
         save_github_snapshot(workspace.github_context_path, snapshot)
         apply_github_evidence(workspace.onboarding_context_path, snapshot)
-        return _dashboard_with_context(app, user_id)
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "github_disconnect":
         workspace = app.workspace(user_id)
         disconnect_github(workspace.github_context_path)
         clear_github_evidence(workspace.onboarding_context_path)
-        return _dashboard_with_context(app, user_id)
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "react":
         reaction = payload.get("reaction")
@@ -234,13 +278,14 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         if mission_id is not None and not isinstance(mission_id, str):
             raise ValueError("mission_id must be a string or null")
 
-        target_id = _selected_mission_id(app, user_id, mission_id)
+        target_id = _selected_mission_id(app, user_id, mission_id, locale=locale)
         mission = _mission_by_id(app, user_id, target_id)
         app.react_to_mission(
             reaction,
             user_id,
             mission_id=target_id,
             top=int(payload.get("top", 3)),
+            locale=locale,
         )
         workspace = app.workspace(user_id)
         observe_context_signal(
@@ -249,7 +294,12 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             mission_tags=list(mission.tags),
             signal=reaction,
         )
-        return _dashboard_with_context(app, user_id, top=int(payload.get("top", 3)))
+        return _dashboard_with_context(
+            app,
+            user_id,
+            top=int(payload.get("top", 3)),
+            locale=locale,
+        )
 
     if action == "complete_step":
         step = payload.get("step")
@@ -259,11 +309,16 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         if mission_id is not None and not isinstance(mission_id, str):
             raise ValueError("mission_id must be a string or null")
 
-        target_id = _selected_mission_id(app, user_id, mission_id)
+        target_id = _selected_mission_id(app, user_id, mission_id, locale=locale)
         mission = _mission_by_id(app, user_id, target_id)
         workspace = app.workspace(user_id)
         before_events = load_feedback(workspace.feedback_path).events
-        snapshot = app.complete_step(step, user_id, mission_id=target_id)
+        snapshot = app.complete_step(
+            step,
+            user_id,
+            mission_id=target_id,
+            locale=locale,
+        )
         after_events = load_feedback(workspace.feedback_path).events
         progress = snapshot.get("progress", {})
         if (
@@ -316,7 +371,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
                 sentiment="dislike",
             )
 
-        return _dashboard_with_context(app, user_id)
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     raise ValueError(f"unsupported desktop action: {action}")
 
