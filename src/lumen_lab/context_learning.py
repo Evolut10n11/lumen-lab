@@ -113,8 +113,10 @@ def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] 
     """Return at most one low-friction question when behavior contradicts the current model."""
     if not context:
         return None
-    learning = _learning(context)
-    if learning["events"] < learning["snooze_until_event"]:
+    learning = context.get("learning")
+    if not isinstance(learning, dict):
+        return None
+    if learning.get("events", 0) < learning.get("snooze_until_event", 0):
         return None
 
     goal = _hypothesis(context, "primary_goal")
@@ -123,7 +125,7 @@ def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] 
     label = goal["value"]
     confidence = float(goal.get("confidence", 0.0))
 
-    if learning["primary_goal_conflict"] >= 2 and confidence <= 0.62:
+    if learning.get("primary_goal_conflict", 0) >= 2 and confidence <= 0.62:
         return {
             "id": "primary_goal_fit",
             "kind": "direction",
@@ -138,7 +140,7 @@ def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] 
             ],
         }
 
-    if learning["primary_goal_deferrals"] >= 3:
+    if learning.get("primary_goal_deferrals", 0) >= 3:
         return {
             "id": "repeated_deferral",
             "kind": "fit",
