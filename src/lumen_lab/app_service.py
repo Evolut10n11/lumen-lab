@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .mission_radar import Mission, load_missions, radar_snapshot
-from .personalization import profile_payload
+from .personalization import build_profile, initialize_workspace, profile_payload
 from .profile import Profile, load_profile, normalized_label
 from .work_session import (
     choose_mission,
@@ -59,6 +60,34 @@ class LumenApplication:
     """User-scoped application facade shared by CLI, API, and future GUI clients."""
 
     root: Path
+
+    def onboard(
+        self,
+        user_id: str,
+        *,
+        display_name: str,
+        priorities: dict[str, int],
+        skills: Iterable[str] = (),
+        interests: Iterable[str] = (),
+        constraints: Iterable[str] = (),
+        preferred_stack: Iterable[str] = (),
+        risk_tolerance: int = 5,
+        replace: bool = False,
+    ) -> dict[str, Any]:
+        """Create one isolated user workspace and return its first dashboard."""
+        workspace = UserWorkspace.from_root(self.root, user_id)
+        profile = build_profile(
+            user_id=workspace.user_id,
+            display_name=display_name,
+            priorities=priorities,
+            skills=skills,
+            interests=interests,
+            constraints=constraints,
+            preferred_stack=preferred_stack,
+            risk_tolerance=risk_tolerance,
+        )
+        initialize_workspace(workspace, profile, replace=replace)
+        return self.dashboard(workspace.user_id)
 
     def workspace(self, user_id: str | None = None) -> UserWorkspace:
         workspace = UserWorkspace.from_root(self.root, user_id)
