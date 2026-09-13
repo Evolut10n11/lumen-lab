@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .github_bridge import GitHubIssueClient, plan_sync
 from .ledger import Outcome, mean_absolute_calibration_error
+from .llm_planner import OpenAICompatiblePlanner, recommend_with_fallback
 from .models import Experiment
 from .planner import choose_next, ranked
 from .store import LabStore
@@ -212,6 +213,36 @@ def cmd_github_sync(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_advise(args: argparse.Namespace) -> int:
+    experiments = _store().load()
+    endpoint = args.endpoint.strip()
+    adapter = None
+    if endpoint:
+        model = args.model.strip()
+        if not model:
+            raise SystemExit("--model is required when --endpoint is configured")
+        token = args.token.strip() or os.environ.get("LUMEN_LLM_TOKEN", "").strip()
+        adapter = OpenAICompatiblePlanner(
+            endpoint=endpoint,
+            model=model,
+            token=token,
+            timeout=args.timeout,
+        )
+
+    recommendation = recommend_with_fallback(experiments, adapter)
+    if recommendation.experiment is None:
+        print("No backlog experiment is available.")
+        return 0
+
+    selected = recommendation.experiment
+    print(
+        f"{recommendation.source.upper()}: {selected.id} — {selected.title} "
+        f"(score {selected.score():.2f})"
+    )
+    print(f"Reason: {recommendation.reason}")
+    return 0
+
+
 def cmd_journal(args: argparse.Namespace) -> int:
     _store().append_journal(args.title, args.body)
     print("Journal entry appended.")
@@ -292,6 +323,16 @@ def build_parser() -> argparse.ArgumentParser:
     github_sync.add_argument("--repository", default="")
     github_sync.add_argument("--token", default="")
     github_sync.set_defaults(func=cmd_github_sync)
+
+    advise = subparsers.add_parser(
+        "advise",
+        help="Recommend a backlog experiment with optional LLM assistance.",
+    )
+    advise.add_argument("--endpoint", default="")
+    advise.add_argument("--model", default="")
+    advise.add_argument("--token", default="")
+    advise.add_argument("--timeout", type=float, default=10.0)
+    advise.set_defaults(func=cmd_advise)
 
     journal = subparsers.add_parser("journal", help="Append a manual lab journal entry.")
     journal.add_argument("title")

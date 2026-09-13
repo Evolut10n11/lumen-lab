@@ -22,3 +22,11 @@ Expected score: 6.75. Observed score: 8.00. Calibration error: 1.25.
 
 The experiment delivered more operational value than the planner predicted, especially because visibility and steerability can now be added without making GitHub a hidden source of truth. Two outcomes are still insufficient to retune planner weights; the five-outcome minimum remains in force.
 
+## 2026-09-13 — exp-002 completed
+
+Implemented an optional provider-neutral LLM planning adapter around OpenAI-compatible chat-completions endpoints. The deterministic planner remains the default and fallback, local endpoints require no secret, and model output is constrained to existing backlog IDs before it can influence a recommendation. Added `lumen advise`, transport injection for tests, local-model documentation, and failure-safe behavior for malformed responses, unknown IDs, timeouts, and network errors.
+
+Expected score: 6.65. Observed score: 8.30. Calibration error: 1.65.
+
+The qualitative planner layer adds useful flexibility without becoming authoritative or mutating state. Three outcomes are still below the five-outcome threshold required before any planner weight changes.
+
