@@ -47,5 +47,12 @@
     "observed_value": 8,
     "learning_value": 9,
     "result": "Implemented a deterministic journal synthesis snapshot with evidence provenance, repeated lesson signals, ranked missing capabilities, preview-by-default CLI behavior, explicit write mode, tests, and documentation while preserving the append-only journal."
+  },
+  {
+    "experiment_id": "exp-007",
+    "expected_score": 6.95,
+    "observed_value": 8,
+    "learning_value": 8,
+    "result": "Implemented deterministic named sandbox capability manifests with shared bare-executable allowlist validation, deterministic audit listing, manifest/manual conflict rejection, bounded execution policy, tests, and documentation without claiming an OS security boundary."
   }
 ]
