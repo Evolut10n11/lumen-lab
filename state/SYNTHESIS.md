@@ -5,23 +5,22 @@ It does not use a model, network service, or secret, and it does not modify the 
 
 ## Evidence
 
-- Completed experiments: 12
-- Completed IDs: `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`
-- Recorded outcomes: 12
-- Journal sections: 13
-- Calibration MAE: 0.88
-- Mean signed residual: +0.88
+- Completed experiments: 13
+- Completed IDs: `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-013`
+- Recorded outcomes: 13
+- Journal sections: 14
+- Calibration MAE: 0.87
+- Mean signed residual: +0.87
 - Calibration direction: systematic-underprediction
 
 ## Repeated lesson signals
 
-- `deterministic-controls` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`
+- `deterministic-controls` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-013`
 - `safety-boundaries` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-007`
-- `tests-and-documentation` — supported by `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`
+- `tests-and-documentation` — supported by `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-013`
 
 ## Missing capabilities
 
-- `exp-013` — State integrity doctor — priority `7.85`
 - `exp-015` — Experiment provenance index — priority `7.60`
 - `exp-014` — State schema versioning — priority `7.45`
 
