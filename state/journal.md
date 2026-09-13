@@ -116,3 +116,12 @@ Expected score: 8.45. Observed score: 9.00. Calibration error: 0.55. Twelve-outc
 
 Against the frozen `+0.94` baseline, `exp-012` is the second true holdout: raw error 0.55 becomes 0.39. Across both holdouts the raw MAE is 0.55 and corrected MAE is 0.39, still a 29.09% improvement without refitting. The baseline remains frozen, and the new registry has replenished three pending experiments for the next autonomous cycles.
 
+## 2026-09-13 — exp-016 completed
+
+Implemented Elaine Mission Radar as the first Lumen capability aimed explicitly at helping the user choose what to do next rather than only improving the lab itself. `state/missions.json` keeps a small reviewed portfolio with a reason each mission matters now, one concrete next action, and bounded impact, urgency, leverage, momentum, effort, and risk scores. `lumen-radar` ranks active missions deterministically, supports top-N and JSON output, ignores paused/done missions, and never mutates or executes the recommendation.
+
+The initial portfolio covers career leverage, Lumen itself, RobotCI, and the Elaine live-avatar project. The current top mission is career leverage: turn one real production LLM project into a concise portfolio case with architecture, metrics, failure modes, and trade-offs. This is intentionally a decision aid rather than an autonomous external actor; no network, model, secret, account action, or external execution is required.
+
+Expected score: 8.70. Observed score: 9.30. Calibration error: 0.60. Thirteen-outcome calibration MAE: 0.85.
+
+Against the frozen `+0.94` baseline, `exp-016` is the third true holdout: raw error 0.60 becomes 0.34. Across the three holdouts the raw MAE is 0.57 and corrected MAE is 0.37, a 35.09% improvement without refitting. The main product learning is that Lumen now has a clean boundary between its internal experiment backlog and a user-facing mission portfolio, so future features can help the user without turning personal goals into autonomous executable actions.

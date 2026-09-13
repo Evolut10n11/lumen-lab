@@ -132,6 +132,17 @@
     "status": "done"
   },
   {
+    "id": "exp-016",
+    "title": "Elaine Mission Radar",
+    "hypothesis": "A deterministic user-facing mission portfolio can turn Lumen into a practical collaborator by selecting one concrete high-leverage next action without network, model, or secret dependencies.",
+    "impact": 10,
+    "learning": 9,
+    "feasibility": 9,
+    "novelty": 8,
+    "risk": 2,
+    "status": "done"
+  },
+  {
     "id": "exp-013",
     "title": "State integrity doctor",
     "hypothesis": "A deterministic cross-file integrity check can catch drift between backlog, outcomes, calibration baselines, and generated snapshots before autonomous work builds on inconsistent state.",

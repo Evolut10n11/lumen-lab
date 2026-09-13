@@ -1,0 +1,54 @@
+[
+  {
+    "id": "career-ai-portfolio",
+    "title": "Strengthen AI/LLM career leverage",
+    "why_now": "Interview opportunities and senior AI roles reward concrete production evidence more than another broad study pass.",
+    "next_action": "Turn one real LLM project into a one-page portfolio case: problem, architecture, models, RAG or agent flow, observability, measured latency or quality, failure modes, and the trade-offs you personally made.",
+    "impact": 10,
+    "urgency": 9,
+    "leverage": 10,
+    "momentum": 8,
+    "effort": 5,
+    "risk": 2,
+    "status": "active"
+  },
+  {
+    "id": "lumen-partner",
+    "title": "Turn Lumen into a useful daily partner",
+    "why_now": "The lab already has strong internal experiment machinery; the highest marginal value now comes from user-facing capabilities that help make decisions and move work forward.",
+    "next_action": "Use Mission Radar at the start of the next work session, update only the scores or next actions that changed, and let the highest-ranked mission choose the first focused block of work.",
+    "impact": 8,
+    "urgency": 7,
+    "leverage": 9,
+    "momentum": 9,
+    "effort": 5,
+    "risk": 2,
+    "status": "active"
+  },
+  {
+    "id": "robotci",
+    "title": "Advance RobotCI to a portfolio-grade developer tool",
+    "why_now": "A small tool with green CI and a clear developer-experience story can become a compact proof of engineering ownership instead of remaining only a pet-project skeleton.",
+    "next_action": "Define and ship one end-to-end rule that catches a real robotics CI failure, including a fixture, failing test case, CLI output, and README example.",
+    "impact": 8,
+    "urgency": 7,
+    "leverage": 8,
+    "momentum": 8,
+    "effort": 4,
+    "risk": 2,
+    "status": "active"
+  },
+  {
+    "id": "elaine-live",
+    "title": "Prove Elaine as a reliable live AI avatar",
+    "why_now": "The concept is differentiated, but its value depends on a repeatable live end-to-end experience rather than adding more subsystems before reliability is proven.",
+    "next_action": "Run a fixed live acceptance session and record 25 consecutive voice interactions with completion rate, median latency, p95 latency, and failure reason for every miss before adding another feature.",
+    "impact": 9,
+    "urgency": 6,
+    "leverage": 9,
+    "momentum": 7,
+    "effort": 8,
+    "risk": 3,
+    "status": "active"
+  }
+]
