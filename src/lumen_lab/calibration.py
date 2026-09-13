@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from .ledger import Outcome, mean_absolute_calibration_error
 
 
@@ -8,17 +6,41 @@ RESIDUAL_TOLERANCE = 0.05
 MATERIAL_BIAS = 0.50
 
 
-@dataclass(frozen=True, slots=True)
 class CalibrationCheckpoint:
-    sample_size: int
-    mae: float | None
-    mean_signed_error: float | None
-    underpredicted: int
-    overpredicted: int
-    exact: int
-    direction: str
-    action: str
-    recommendation: str
+    __slots__ = (
+        "sample_size",
+        "mae",
+        "mean_signed_error",
+        "underpredicted",
+        "overpredicted",
+        "exact",
+        "direction",
+        "action",
+        "recommendation",
+    )
+
+    def __init__(
+        self,
+        *,
+        sample_size: int,
+        mae: float | None,
+        mean_signed_error: float | None,
+        underpredicted: int,
+        overpredicted: int,
+        exact: int,
+        direction: str,
+        action: str,
+        recommendation: str,
+    ) -> None:
+        self.sample_size = sample_size
+        self.mae = mae
+        self.mean_signed_error = mean_signed_error
+        self.underpredicted = underpredicted
+        self.overpredicted = overpredicted
+        self.exact = exact
+        self.direction = direction
+        self.action = action
+        self.recommendation = recommendation
 
 
 def residual(outcome: Outcome) -> float:
