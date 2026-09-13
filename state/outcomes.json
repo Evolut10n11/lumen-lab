@@ -33,5 +33,12 @@
     "observed_value": 9,
     "learning_value": 9,
     "result": "Implemented deterministic dry-run-first backlog replenishment with pending-work blocking, stable curated candidate IDs, duplicate protection, schema validation, explicit apply mode, tests, and operating documentation."
+  },
+  {
+    "experiment_id": "exp-006",
+    "expected_score": 7.85,
+    "observed_value": 8,
+    "learning_value": 10,
+    "result": "Implemented a deterministic residual-based planner calibration checkpoint with sample-size gating, signed-bias classification, CLI reporting, tests, and documentation. The first five outcomes show systematic underprediction, so relative planner weights remain unchanged pending feature-level evidence."
   }
 ]
