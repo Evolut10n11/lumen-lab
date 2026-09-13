@@ -16,13 +16,16 @@ def _payload(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def dispatch(request: dict[str, Any]) -> dict[str, Any]:
-    """Dispatch one desktop request to the product-facing application service."""
+    """Dispatch one desktop request to the product-facing application service.
+
+    The desktop state root is deliberately host-controlled. The Tauri process chooses
+    the Python subprocess working directory, and webview input cannot override it.
+    """
     action = request.get("action")
     if not isinstance(action, str) or not action.strip():
         raise ValueError("action must be a non-empty string")
 
-    root_raw = request.get("root")
-    root = Path(root_raw) if isinstance(root_raw, str) and root_raw.strip() else Path.cwd()
+    root = Path.cwd()
     user_id = request.get("user_id")
     if user_id is not None and not isinstance(user_id, str):
         raise ValueError("user_id must be a string or null")
