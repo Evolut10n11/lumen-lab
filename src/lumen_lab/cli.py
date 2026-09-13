@@ -10,6 +10,7 @@ from .ledger import Outcome, mean_absolute_calibration_error
 from .llm_planner import OpenAICompatiblePlanner, recommend_with_fallback
 from .models import Experiment
 from .planner import choose_next, ranked
+from .replenishment import apply_replenishment, has_pending_work, replenishment_candidates
 from .sandbox import SandboxError, run_sandboxed
 from .store import LabStore
 
@@ -215,6 +216,38 @@ def cmd_github_sync(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_replenish(args: argparse.Namespace) -> int:
+    store = _store()
+    experiments = store.load()
+    candidates = replenishment_candidates(experiments)
+    if not candidates:
+        if has_pending_work(experiments):
+            print("Replenishment blocked: backlog or active work already exists.")
+        else:
+            print("No new curated replenishment candidates are available.")
+        return 0
+
+    if not args.apply:
+        print("Dry run: backlog was not changed.")
+        for item in candidates:
+            print(f"PROPOSE {item.id}: {item.title} (score {item.score():.2f})")
+        print("Use --apply to append these validated candidates to state/backlog.json.")
+        return 0
+
+    updated, added = apply_replenishment(experiments)
+    store.save(updated)
+    summary = "\n".join(
+        f"- `{item.id}` — {item.title} — score `{item.score():.2f}`" for item in added
+    )
+    store.append_journal(
+        "Backlog replenished",
+        f"Added {len(added)} curated second-generation experiments:\n\n{summary}",
+    )
+    for item in added:
+        print(f"ADDED {item.id}: {item.title} (score {item.score():.2f})")
+    return 0
+
+
 def cmd_advise(args: argparse.Namespace) -> int:
     experiments = _store().load()
     endpoint = args.endpoint.strip()
@@ -370,6 +403,13 @@ def build_parser() -> argparse.ArgumentParser:
     github_sync.add_argument("--repository", default="")
     github_sync.add_argument("--token", default="")
     github_sync.set_defaults(func=cmd_github_sync)
+
+    replenish = subparsers.add_parser(
+        "replenish",
+        help="Propose or apply curated next-generation backlog experiments.",
+    )
+    replenish.add_argument("--apply", action="store_true")
+    replenish.set_defaults(func=cmd_replenish)
 
     advise = subparsers.add_parser(
         "advise",
