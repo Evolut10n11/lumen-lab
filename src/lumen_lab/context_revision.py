@@ -11,6 +11,7 @@ from .localization import is_russian, locale_from_context, normalize_locale
 from .onboarding import (
     ALLOWED_FOCUS_MINUTES,
     ONBOARDING_CONTEXT_VERSION,
+    _context_theme,
     apply_focus_minutes,
     goal_label,
     load_onboarding_context,
@@ -329,13 +330,21 @@ def revise_user_direction(
 
     previous_context = _answer_text(existing_context, "current_context")
     previous_friction = _answer_text(existing_context, "friction")
+    previous_theme = _context_theme(previous_context, old_goal) if previous_context else None
     interests = profile.interests
     constraints = profile.constraints
     if current_context is not None:
         interests = _replace_inferred_label(
             interests,
+            old_value=previous_theme,
+            new_value=None,
+            exclude=new_goal,
+        )
+        new_theme = _context_theme(current_context, new_goal) if current_context else None
+        interests = _replace_inferred_label(
+            interests,
             old_value=previous_context,
-            new_value=current_context or None,
+            new_value=new_theme,
             exclude=new_goal,
         )
     if friction is not None:
