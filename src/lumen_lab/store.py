@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .ledger import Outcome
 from .models import Experiment
 
 
@@ -21,6 +22,10 @@ class LabStore:
         return self.state_dir / "backlog.json"
 
     @property
+    def outcomes_path(self) -> Path:
+        return self.state_dir / "outcomes.json"
+
+    @property
     def journal_path(self) -> Path:
         return self.state_dir / "journal.md"
 
@@ -28,6 +33,8 @@ class LabStore:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         if not self.backlog_path.exists():
             self.save([])
+        if not self.outcomes_path.exists():
+            self.save_outcomes([])
         if not self.journal_path.exists():
             self.journal_path.write_text("# Lab Journal\n\n", encoding="utf-8")
 
@@ -45,6 +52,29 @@ class LabStore:
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+
+    def load_outcomes(self) -> list[Outcome]:
+        self.ensure()
+        raw = json.loads(self.outcomes_path.read_text(encoding="utf-8"))
+        if not isinstance(raw, list):
+            raise ValueError("outcomes must contain a JSON list")
+        return [Outcome.from_dict(item) for item in raw]
+
+    def save_outcomes(self, outcomes: list[Outcome]) -> None:
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        payload = [item.to_dict() for item in outcomes]
+        self.outcomes_path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    def record_outcome(self, outcome: Outcome) -> None:
+        outcome.validate()
+        outcomes = self.load_outcomes()
+        if any(item.experiment_id == outcome.experiment_id for item in outcomes):
+            raise ValueError(f"outcome already recorded for {outcome.experiment_id}")
+        outcomes.append(outcome)
+        self.save_outcomes(outcomes)
 
     def append_journal(self, title: str, body: str) -> None:
         self.ensure()

@@ -1,0 +1,9 @@
+[
+  {
+    "experiment_id": "exp-003",
+    "expected_score": 7.95,
+    "observed_value": 8,
+    "learning_value": 9,
+    "result": "Implemented a structured outcome ledger, calibration metric, CLI reporting, persistence, and tests."
+  }
+]

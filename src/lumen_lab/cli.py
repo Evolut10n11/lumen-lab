@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .ledger import Outcome, mean_absolute_calibration_error
 from .models import Experiment
 from .planner import choose_next, ranked
 from .store import LabStore
@@ -129,12 +130,47 @@ def cmd_complete(args: argparse.Namespace) -> int:
     selected = next((item for item in experiments if item.id == args.id), None)
     if selected is None:
         raise SystemExit(f"Unknown experiment id: {args.id}")
+    if selected.status == "done":
+        raise SystemExit(f"Experiment already completed: {args.id}")
+
+    result = args.result.strip() or "Completed without an additional result note."
+    outcome = Outcome(
+        experiment_id=selected.id,
+        expected_score=selected.score(),
+        observed_value=args.value,
+        learning_value=args.learning,
+        result=result,
+    )
+    store.record_outcome(outcome)
+
     selected.status = "done"
     store.save(experiments)
-    result = args.result.strip() or "Completed without an additional result note."
-    entry = f"**{selected.id} — {selected.title}**\n\n{result}"
+    entry = (
+        f"**{selected.id} — {selected.title}**\n\n{result}\n\n"
+        f"Observed score: {outcome.observed_score():.2f}; "
+        f"calibration error: {outcome.calibration_error():.2f}."
+    )
     store.append_journal("Experiment completed", entry)
     print(f"Completed: {selected.id} — {selected.title}")
+    return 0
+
+
+def cmd_ledger(_: argparse.Namespace) -> int:
+    outcomes = _store().load_outcomes()
+    if not outcomes:
+        print("Outcome ledger is empty.")
+        return 0
+
+    print("EXPERIMENT  EXPECTED  OBSERVED  ERROR  RESULT")
+    print("----------  --------  --------  -----  ------------------------------")
+    for outcome in outcomes:
+        print(
+            f"{outcome.experiment_id:<10}  {outcome.expected_score:>8.2f}  "
+            f"{outcome.observed_score():>8.2f}  {outcome.calibration_error():>5.2f}  "
+            f"{outcome.result}"
+        )
+    error = mean_absolute_calibration_error(outcomes)
+    print(f"\nMean absolute calibration error: {error:.2f}")
     return 0
 
 
@@ -147,11 +183,14 @@ def cmd_journal(args: argparse.Namespace) -> int:
 def cmd_pulse(_: argparse.Namespace) -> int:
     store = _store()
     experiments = store.load()
+    outcomes = store.load_outcomes()
     statuses = ("backlog", "active", "done", "dropped")
     counts = {
         status: sum(item.status == status for item in experiments)
         for status in statuses
     }
+    calibration_error = mean_absolute_calibration_error(outcomes)
+    calibration_text = "n/a" if calibration_error is None else f"{calibration_error:.2f}"
     ordered = ranked(experiments)
     lines = [
         "# Lumen Pulse",
@@ -162,6 +201,7 @@ def cmd_pulse(_: argparse.Namespace) -> int:
         f"- Active: {counts['active']}",
         f"- Done: {counts['done']}",
         f"- Dropped: {counts['dropped']}",
+        f"- Calibration MAE: {calibration_text}",
         "",
         "## Ranked backlog",
         "",
@@ -196,10 +236,15 @@ def build_parser() -> argparse.ArgumentParser:
     next_parser = subparsers.add_parser("next", help="Select and activate the next experiment.")
     next_parser.set_defaults(func=cmd_next)
 
-    complete = subparsers.add_parser("complete", help="Mark an experiment complete.")
+    complete = subparsers.add_parser("complete", help="Complete and score an experiment.")
     complete.add_argument("id")
+    complete.add_argument("--value", type=int, required=True, choices=range(1, 11))
+    complete.add_argument("--learning", type=int, required=True, choices=range(1, 11))
     complete.add_argument("--result", default="")
     complete.set_defaults(func=cmd_complete)
+
+    ledger = subparsers.add_parser("ledger", help="Show experiment calibration outcomes.")
+    ledger.set_defaults(func=cmd_ledger)
 
     journal = subparsers.add_parser("journal", help="Append a manual lab journal entry.")
     journal.add_argument("title")
