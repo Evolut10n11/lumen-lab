@@ -66,6 +66,10 @@ class UserWorkspace:
         return self.directory / "work_progress.json"
 
     @property
+    def feedback_path(self) -> Path:
+        return self.directory / "feedback.json"
+
+    @property
     def proposals_path(self) -> Path:
         return self.directory / "proposals.json"
 

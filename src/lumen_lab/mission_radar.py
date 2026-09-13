@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .feedback import PreferenceFeedback, feedback_adjustment
 from .profile import Profile, normalized_label
 
 DEFAULT_MISSIONS_PATH = Path("state/missions.json")
@@ -146,36 +147,52 @@ def profile_alignment(mission: Mission, profile: Profile) -> float:
     return float(max(weights)) if weights else 5.0
 
 
-def mission_score(mission: Mission, profile: Profile | None = None) -> float:
-    if profile is None:
-        return mission.score
-    alignment = profile_alignment(mission, profile)
-    alignment_adjustment = (alignment - 5.0) * 0.30
-    risk_over_tolerance = max(0, mission.risk - profile.risk_tolerance)
-    risk_adjustment = risk_over_tolerance * 0.10
-    return round(min(10.0, max(0.0, mission.score + alignment_adjustment - risk_adjustment)), 2)
+def mission_score(
+    mission: Mission,
+    profile: Profile | None = None,
+    feedback: PreferenceFeedback | None = None,
+) -> float:
+    value = mission.score
+    if profile is not None:
+        alignment = profile_alignment(mission, profile)
+        alignment_adjustment = (alignment - 5.0) * 0.30
+        risk_over_tolerance = max(0, mission.risk - profile.risk_tolerance)
+        risk_adjustment = risk_over_tolerance * 0.10
+        value += alignment_adjustment - risk_adjustment
+    value += feedback_adjustment(mission.id, mission.tags, feedback)
+    return round(min(10.0, max(0.0, value)), 2)
 
 
 def ranked_missions(
-    missions: list[Mission], profile: Profile | None = None
+    missions: list[Mission],
+    profile: Profile | None = None,
+    feedback: PreferenceFeedback | None = None,
 ) -> list[Mission]:
     active = [mission for mission in missions if mission.status == "active"]
     return sorted(
         active,
-        key=lambda mission: (-mission_score(mission, profile), mission.id),
+        key=lambda mission: (-mission_score(mission, profile, feedback), mission.id),
     )
 
 
 def radar_snapshot(
-    missions: list[Mission], top: int = 1, profile: Profile | None = None
+    missions: list[Mission],
+    top: int = 1,
+    profile: Profile | None = None,
+    feedback: PreferenceFeedback | None = None,
 ) -> list[dict[str, Any]]:
     if top < 1:
         raise ValueError("top must be at least 1")
     snapshot: list[dict[str, Any]] = []
-    for mission in ranked_missions(missions, profile)[:top]:
+    for mission in ranked_missions(missions, profile, feedback)[:top]:
         item = mission.to_dict()
         item["base_score"] = mission.score
-        item["score"] = mission_score(mission, profile)
+        item["score"] = mission_score(mission, profile, feedback)
+        item["feedback_adjustment"] = feedback_adjustment(
+            mission.id,
+            mission.tags,
+            feedback,
+        )
         if profile is not None:
             item["profile_id"] = profile.id
             item["profile_alignment"] = profile_alignment(mission, profile)

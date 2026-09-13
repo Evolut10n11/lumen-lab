@@ -1,103 +1,108 @@
 # Application service
 
-`LumenApplication` is the application-facing boundary between Lumen's domain logic and any client UI.
+`LumenApplication` is the product-facing boundary between Lumen's domain logic and the GUI.
 
-The goal is to keep a future desktop or web interface thin. The UI should not reimplement onboarding, mission ranking, user scoping, progress updates, or explanation logic. It should call this service and render the returned payloads.
+The GUI should feel like a product, not a settings panel. A user should be able to open Lumen, see one useful next move, act on it, and let the system adapt in the background.
+
+## Product principle
+
+The default experience is **use first, tune never**.
+
+A user does not need to understand ranking weights, feedback scores, state files, or mission formulas. Those remain inspectable for developers, but the product surface exposes only simple choices:
+
+- **Start / Continue** — work on the current recommendation;
+- **More like this** — increase preference for this kind of work;
+- **Not now** — downrank only this item without teaching Lumen that the whole topic is bad;
+- **Less like this** — reduce preference for this kind of work.
+
+Completing a full session is also treated as a positive preference signal automatically. No extra rating prompt is required.
 
 ## User boundary
 
-Every call is resolved through `UserWorkspace` and therefore reads or writes only the selected user's local workspace under:
+Every call is resolved through `UserWorkspace` and reads or writes only the selected user's local workspace under:
 
 ```text
 .lumen/users/<user-id>/
 ```
 
-If `user_id` is omitted, the same default-user resolution used by the CLI applies (`LUMEN_USER_ID`, then `default`).
+Feedback and learned preference signals are stored in the same user boundary. One person's behavior cannot influence another person's ranking.
 
 ## Bootstrap
 
-A GUI can ask for one startup payload before it decides which screen to render:
+A GUI starts with one call:
 
 ```python
 payload = app.bootstrap("alice")
 ```
 
-The bootstrap payload contains:
+If the user is new, render onboarding. If the user already exists, render the returned dashboard. The GUI never needs to inspect `.lumen/` directly.
 
-- `schema_version`: the application contract version;
-- `selected_user_id`: the user the app resolved for this launch;
-- `initialized`: whether that user's workspace already exists;
-- `users`: initialized local users available for profile switching;
-- `dashboard`: the selected user's dashboard when initialized, otherwise `null`.
-
-This gives the client a deterministic startup rule: render onboarding when `initialized` is false, otherwise render the main dashboard. The GUI never needs to inspect `.lumen/` directly.
-
-## Onboarding
-
-The app layer can create an isolated user directly from explicit inputs:
-
-```python
-from pathlib import Path
-from lumen_lab.app_service import LumenApplication
-
-app = LumenApplication(Path.cwd())
-payload = app.onboard(
-    "alice",
-    display_name="Alice",
-    priorities={"career": 10, "health": 7},
-    interests=["robotics"],
-    skills=["python"],
-    constraints=["4 hours per week"],
-    risk_tolerance=4,
-)
-```
-
-`onboard()` creates the profile, starter missions, and work-session templates, then returns the user's first dashboard. Reusing an existing user id raises an error unless `replace=True` is passed explicitly. Replacement rebuilds that user's generated state and resets only that user's progress.
-
-## Dashboard
+## Dashboard as a product contract
 
 ```python
 payload = app.dashboard("alice")
 ```
 
-The dashboard payload contains:
+The payload contains both domain data and an `experience` block intended for direct UI rendering.
 
-- `schema_version`: the application contract version;
-- `user`: explicit profile data for the selected user;
-- `today`: the currently selected mission, work-session progress, and an explanation of why it was selected;
-- `radar`: the ranked mission list;
-- `summary`: active mission and progress totals.
+The important product-facing fields are:
 
-The selection explanation exposes the personalized score, base score, matched priorities, and human-readable reasons. This is intended to make the product auditable rather than presenting recommendations as unexplained model output.
+```text
+experience.headline
+experience.message
+experience.primary_action
+experience.quick_actions
+experience.learning
+```
 
-## Completing work
+A client can therefore render a useful home screen without recreating recommendation wording or exposing tuning controls.
+
+The lower-level `today`, `radar`, and selection explanation remain available for expandable detail views and debugging.
+
+## Lightweight reactions
+
+The GUI should send action ids rather than asking the user to edit weights:
+
+```python
+app.react_to_mission("more_like_this", "alice")
+app.react_to_mission("not_now", "alice")
+app.react_to_mission("less_like_this", "alice")
+```
+
+`not_now` affects only the current mission. `more_like_this` and `less_like_this` can generalize through mission tags so future ranking becomes more personal.
+
+## Passive learning
 
 ```python
 app.complete_step(1, "alice")
 ```
 
-Progress is written only to that user's workspace. Tests cover cross-user isolation.
+Normal progress remains normal progress. When a user completes the final step of a session for the first time, Lumen records one positive preference signal automatically.
 
-## CLI bridge
+Repeatedly opening or re-completing an already finished step does not create duplicate preference events.
 
-The same dashboard service is available through:
+This gives Lumen useful adaptation even when a user never presses a feedback button.
 
-```text
-lumen-dashboard --user alice
-lumen-dashboard --user alice --json
-lumen-dashboard --user alice --done 1 --json
+## Onboarding
+
+`onboard()` still accepts explicit profile inputs, but the GUI should keep the first-run experience small. It can begin from a name and a small number of high-level goals, then let actual usage refine ranking over time.
+
+```python
+app.onboard(
+    "alice",
+    display_name="Alice",
+    priorities={"career": 10},
+)
 ```
 
-The JSON mode is useful as a temporary integration surface while the GUI is being built. A future HTTP or desktop adapter should call `LumenApplication` directly instead of shelling out to the CLI.
+Additional interests, skills, constraints, stack preferences, and risk tolerance are optional enrichment rather than a required configuration wizard.
 
 ## Design rule for the GUI
 
-The application client should remain presentation-focused:
+The home screen should answer three questions immediately:
 
-1. app launch calls `bootstrap()`;
-2. onboarding calls `onboard()` with explicit user inputs;
-3. the home screen renders `dashboard()`;
-4. completing a step calls `complete_step()`;
-5. the UI renders the returned explanation rather than inventing its own ranking rationale.
+1. What is the best next thing for me right now?
+2. What happens when I press the main button?
+3. How do I gently steer Lumen if the recommendation is wrong?
 
-This keeps one source of truth for personalization across CLI, tests, and future GUI clients.
+Everything else belongs behind progressive disclosure. Raw scores and internal state are for explainability and debugging, not the primary product surface.

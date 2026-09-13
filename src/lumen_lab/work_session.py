@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .feedback import PreferenceFeedback, feedback_adjustment
 from .mission_radar import Mission, mission_score, ranked_missions
 from .profile import Profile
 
@@ -108,8 +109,9 @@ def choose_mission(
     missions: list[Mission],
     mission_id: str | None = None,
     profile: Profile | None = None,
+    feedback: PreferenceFeedback | None = None,
 ) -> Mission:
-    active = ranked_missions(missions, profile)
+    active = ranked_missions(missions, profile, feedback)
     if mission_id is None:
         if not active:
             raise ValueError("no active missions")
@@ -165,6 +167,7 @@ def session_snapshot(
     template: WorkSessionTemplate,
     progress: dict[str, list[int]],
     profile: Profile | None = None,
+    feedback: PreferenceFeedback | None = None,
 ) -> dict[str, Any]:
     completed = progress.get(mission.id, [])
     validate_progress_for_template(completed, template)
@@ -177,8 +180,9 @@ def session_snapshot(
         "mission_id": mission.id,
         "title": mission.title,
         "why_now": mission.why_now,
-        "score": mission_score(mission, profile),
+        "score": mission_score(mission, profile, feedback),
         "base_score": mission.score,
+        "feedback_adjustment": feedback_adjustment(mission.id, mission.tags, feedback),
         "profile_id": None if profile is None else profile.id,
         "focus_minutes": template.focus_minutes,
         "steps": [

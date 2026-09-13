@@ -1,76 +1,90 @@
 # Per-user personalization
 
-Lumen separates repository-owned laboratory evidence from machine-local user state.
+Lumen keeps repository-owned laboratory evidence separate from the person actually using the product.
 
-## Why this exists
+## The important part for users
 
-`state/` is part of the repository history. It contains the experiments, calibration evidence, mission examples, and other artifacts produced while developing Lumen itself. It must not silently become the personality or goal set of every person who installs Lumen.
+A new user should not have to tune Lumen like a control panel.
 
-Interactive user behavior therefore resolves through an explicit local identity and an isolated workspace under:
+The product starts from a small amount of explicit information, then adapts from real use:
+
+- what the user starts and completes;
+- what they ask to see more often;
+- what they postpone;
+- what they explicitly want less of.
+
+The internal ranking remains deterministic and inspectable, but the primary product surface uses normal product actions instead of sliders and manual score editing.
+
+## User isolation
+
+Every user has a separate local workspace:
 
 ```text
 .lumen/users/<user-id>/
 ```
 
-`.lumen/` is ignored by Git, so personal goals, interests, progress, proposal backlogs, and journals are not committed by default.
+`.lumen/` is ignored by Git, so personal goals, progress, preferences, and learned signals are not committed by default.
 
-## Identity resolution
+Lumen never falls back to the repository owner's profile or work history for a different user.
 
-Interactive commands resolve a user in this order:
+## Lightweight onboarding
 
-1. `--user <id>` when supplied;
-2. the `LUMEN_USER_ID` environment variable;
-3. the local id `default`.
-
-User ids are validated and cannot contain path separators or traversal sequences.
-
-A user workspace must be initialized before normal `lumen-radar`, `lumen-work`, or user-scoped `lumen-propose` behavior can use it. Lumen does not fall back to `state/profile.json` when a local user has not been initialized.
-
-## Onboarding
-
-Create a local profile with explicit inputs:
-
-```bash
-lumen-user --user alex init \
-  --name "Alex" \
-  --priority career=10 \
-  --priority health=7 \
-  --interest robotics \
-  --skill Python \
-  --constraint "5 hours per week"
-```
-
-On Windows PowerShell the same command can be entered on one line:
+Only a small starting signal is required. For example:
 
 ```powershell
-lumen-user --user alex init --name "Alex" --priority career=10 --priority health=7 --interest robotics --skill Python --constraint "5 hours per week"
+lumen-user --user alex init --name "Alex" --priority career=10
 ```
 
-Initialization creates a profile, a small starter mission portfolio, and matching focused-work templates from that user's own inputs. No hidden ChatGPT conversation context, repository-owner profile, model call, or network request is used for this bootstrap.
+Interests, skills, constraints, preferred stack, and risk tolerance can enrich the first recommendations, but they do not need to become a long setup wizard in the GUI.
+
+The product can collect more context later, when it is actually useful.
+
+## Learning from use
+
+A user's learned preference state lives in:
+
+```text
+.lumen/users/<user-id>/feedback.json
+```
+
+The GUI exposes three simple steering actions:
+
+- `more_like_this` — positive signal for the mission and its kind of work;
+- `not_now` — downrank only the current mission;
+- `less_like_this` — negative signal for the mission and its kind of work.
+
+Completing an entire work session also records one positive signal automatically. Re-opening or re-completing the finished session does not create duplicate learning events.
+
+This means personalization improves even if the user never opens a settings screen.
 
 ## State layout
 
-A typical user workspace contains:
+A typical mature workspace can contain:
 
 ```text
 .lumen/users/alex/
 ├── profile.json
 ├── missions.json
 ├── work_sessions.json
-├── work_progress.json   # appears after progress is recorded
-├── backlog.json         # appears when proposal/backlog flows are used
-├── outcomes.json        # appears when outcome flows are used
-└── journal.md           # appears when lab-store flows are used
+├── work_progress.json
+├── feedback.json
+├── backlog.json
+├── outcomes.json
+└── journal.md
 ```
 
-Work progress is isolated by user, so two people using the same checkout cannot complete each other's steps.
+Only files that are actually needed are created.
 
-## Compatibility and developer mode
+## Why feedback is split into mission and topic signals
 
-Core parsers still accept explicit file paths for deterministic tests and repository maintenance. `lumen-propose --root <path>` without `--user` intentionally keeps the repository-owned developer-state mode. Normal interactive `lumen-propose` without an explicit `--root` uses the current local user workspace.
+`Not now` should not mean `I dislike this topic`.
 
-This split is deliberate: repository state is evidence about Lumen; user state is evidence about one person's goals and work.
+For that reason, Lumen distinguishes between feedback about one concrete mission and feedback that can generalize through mission tags. This keeps temporary timing decisions from poisoning future recommendations.
+
+## Developer mode
+
+Core parsers still accept explicit file paths for deterministic tests and repository maintenance. Repository-owned `state/` remains evidence about Lumen itself; user-owned `.lumen/` state remains evidence about one person's goals and behavior.
 
 ## Application identity
 
-A future desktop/web application should map its authenticated account or local installation id to the same internal `user_id`. The storage backend can later move from local JSON to a database without changing the rule that every profile, mission, session, proposal, feedback event, and outcome is scoped to exactly one user.
+A desktop or web client should map its authenticated account or local installation id to the same internal `user_id`. The storage backend can later move from local JSON to a database without changing the rule that every profile, mission, session, proposal, feedback event, and outcome belongs to exactly one user.
