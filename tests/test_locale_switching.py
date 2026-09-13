@@ -60,7 +60,11 @@ def test_locale_switch_relocalizes_starter_work_without_resetting_progress(
     assert russian_dashboard["today"]["mission_id"] == mission_id
     assert russian_dashboard["today"]["progress"]["completed"] == 1
     assert russian_dashboard["today"]["focus_minutes"] == 30
-    assert any("Продвинуться" in item["title"] for item in after_missions if item["id"] in before_ids)
+    assert any(
+        "Продвинуться" in item["title"]
+        for item in after_missions
+        if item["id"] in before_ids
+    )
     assert all(
         item["focus_minutes"] == 30 for item in sessions if item["mission_id"] in before_ids
     )
@@ -80,7 +84,4 @@ def test_locale_switch_relocalizes_starter_work_without_resetting_progress(
 
 def test_desktop_bootstrap_prefers_explicit_requested_locale() -> None:
     source = Path("apps/desktop/src/App.tsx").read_text(encoding="utf-8")
-    assert (
-        "result.dashboard?.locale ?? result.locale ?? result.context?.locale"
-        in source
-    )
+    assert "result.dashboard?.locale ?? result.locale ?? result.context?.locale" in source
