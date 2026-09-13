@@ -1,0 +1,13 @@
+{
+  "manifests": [
+    {
+      "name": "python-basic",
+      "description": "Bounded Python snippets for controlled local experiments.",
+      "executables": [
+        "python"
+      ],
+      "timeout_seconds": 5.0,
+      "max_output_bytes": 65536
+    }
+  ]
+}
