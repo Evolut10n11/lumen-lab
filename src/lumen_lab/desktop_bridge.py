@@ -12,6 +12,10 @@ from .context_learning import (
     observe_context_signal,
 )
 from .feedback import load_feedback, record_feedback
+from .github_context_missions import (
+    clear_github_context_missions,
+    reconcile_github_context_mission,
+)
 from .github_user_context import (
     GitHubPublicContextClient,
     apply_github_evidence,
@@ -204,6 +208,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         snapshot = GitHubPublicContextClient().fetch(_github_username(payload))
         save_github_snapshot(workspace.github_context_path, snapshot)
         apply_github_evidence(workspace.onboarding_context_path, snapshot)
+        reconcile_github_context_mission(workspace, snapshot)
         return _dashboard_with_context(app, user_id)
 
     if action == "github_refresh":
@@ -218,12 +223,14 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         snapshot = GitHubPublicContextClient().fetch(username)
         save_github_snapshot(workspace.github_context_path, snapshot)
         apply_github_evidence(workspace.onboarding_context_path, snapshot)
+        reconcile_github_context_mission(workspace, snapshot)
         return _dashboard_with_context(app, user_id)
 
     if action == "github_disconnect":
         workspace = app.workspace(user_id)
         disconnect_github(workspace.github_context_path)
         clear_github_evidence(workspace.onboarding_context_path)
+        clear_github_context_missions(workspace)
         return _dashboard_with_context(app, user_id)
 
     if action == "react":
