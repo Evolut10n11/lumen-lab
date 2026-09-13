@@ -7,6 +7,7 @@ from pathlib import Path
 from .holdout import FrozenCalibrationBaseline, analyze_holdout, load_baseline
 from .ledger import Outcome
 from .models import Experiment
+from .provenance import load_provenance, validate_provenance
 from .replenishment import load_candidate_registry
 from .synthesis import render_synthesis
 
@@ -122,6 +123,28 @@ def run_doctor(root: Path) -> DoctorReport:
                     "every outcome references done work and every done experiment has one outcome",
                 )
             )
+
+    if experiments is None or outcomes is None:
+        checks.append(
+            CheckResult(
+                "provenance",
+                False,
+                "valid backlog and outcomes are required before provenance can be checked",
+            )
+        )
+    else:
+        try:
+            records = load_provenance(state / "provenance.json")
+            validate_provenance(root, experiments, outcomes, records)
+            checks.append(
+                CheckResult(
+                    "provenance",
+                    True,
+                    f"{len(records)} completed experiment provenance record(s)",
+                )
+            )
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            checks.append(CheckResult("provenance", False, str(exc)))
 
     try:
         candidates = load_candidate_registry(state / "candidates.json")
