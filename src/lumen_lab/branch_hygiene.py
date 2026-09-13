@@ -92,9 +92,9 @@ class GitHubApi:
         return pull_requests
 
     def delete_branch(self, branch: str) -> None:
-        encoded_ref = urllib.parse.quote(f"heads/{branch}", safe="")
+        encoded_branch = urllib.parse.quote(branch, safe="/")
         self._request(
-            f"/repos/{self.repository}/git/refs/{encoded_ref}",
+            f"/repos/{self.repository}/git/refs/heads/{encoded_branch}",
             method="DELETE",
         )
 
