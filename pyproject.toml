@@ -30,6 +30,7 @@ lumen-radar = "lumen_lab.mission_radar_cli:main"
 lumen-work = "lumen_lab.work_session_cli:main"
 lumen-doctor = "lumen_lab.doctor_cli:main"
 lumen-provenance = "lumen_lab.provenance_cli:main"
+lumen-propose = "lumen_lab.proposal_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
