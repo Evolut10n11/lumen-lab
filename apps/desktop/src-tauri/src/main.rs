@@ -1,8 +1,40 @@
 use std::env;
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tauri::Manager;
+
+fn bundled_engine_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    let candidate = resource_dir.join("resources").join("lumen-engine.exe");
+    candidate.is_file().then_some(candidate)
+}
+
+fn engine_command(app: &tauri::AppHandle) -> Result<(Command, String), String> {
+    if let Ok(python) = env::var("LUMEN_PYTHON") {
+        let mut command = Command::new(&python);
+        command.arg("-m").arg("lumen_lab.desktop_bridge");
+        return Ok((command, format!("Python override '{python}'")));
+    }
+
+    if let Some(engine) = bundled_engine_path(app) {
+        let label = engine.display().to_string();
+        return Ok((Command::new(engine), label));
+    }
+
+    if cfg!(debug_assertions) {
+        let python = "python".to_string();
+        let mut command = Command::new(&python);
+        command.arg("-m").arg("lumen_lab.desktop_bridge");
+        return Ok((command, "development Python engine".to_string()));
+    }
+
+    Err(
+        "Lumen's bundled engine is missing from this installation. Reinstall Lumen and try again."
+            .to_string(),
+    )
+}
 
 #[tauri::command]
 fn lumen_request(app: tauri::AppHandle, request: String) -> Result<String, String> {
@@ -14,21 +46,14 @@ fn lumen_request(app: tauri::AppHandle, request: String) -> Result<String, Strin
     fs::create_dir_all(&data_dir)
         .map_err(|error| format!("could not create app data directory: {error}"))?;
 
-    let python = env::var("LUMEN_PYTHON").unwrap_or_else(|_| "python".to_string());
-    let mut child = Command::new(&python)
-        .arg("-m")
-        .arg("lumen_lab.desktop_bridge")
+    let (mut command, engine_label) = engine_command(&app)?;
+    let mut child = command
         .current_dir(&data_dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|error| {
-            format!(
-                "could not start the Lumen engine with '{python}': {error}. \
-                 Activate the project virtual environment or set LUMEN_PYTHON."
-            )
-        })?;
+        .map_err(|error| format!("could not start Lumen engine ({engine_label}): {error}"))?;
 
     if let Some(stdin) = child.stdin.as_mut() {
         stdin

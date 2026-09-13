@@ -17,3 +17,4 @@ htmlcov/
 .lumen/
 .codex/
 .12ui/
+apps/desktop/src-tauri/resources/lumen-engine.exe
