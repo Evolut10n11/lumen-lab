@@ -84,15 +84,13 @@ type BridgeResponse<T> =
   | { ok: true; data: T }
   | { ok: false; error: { type: string; message: string } };
 
-const root = "";
-
 async function request<T>(
   action: string,
   userId: string | null,
   payload: Record<string, unknown> = {},
 ): Promise<T> {
   const raw = await invoke<string>("lumen_request", {
-    request: JSON.stringify({ action, root, user_id: userId, payload }),
+    request: JSON.stringify({ action, user_id: userId, payload }),
   });
   const response = JSON.parse(raw) as BridgeResponse<T>;
   if (!response.ok) {
