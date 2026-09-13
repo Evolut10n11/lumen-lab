@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-
 MIN_CALIBRATION_SAMPLES = 5
 RESIDUAL_TOLERANCE = 0.05
 MATERIAL_BIAS = 0.50
