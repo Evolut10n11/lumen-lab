@@ -44,6 +44,17 @@ def test_repeated_signal_requires_two_distinct_outcomes() -> None:
     ]
 
 
+def test_render_synthesis_handles_empty_evidence() -> None:
+    text = render_synthesis([], [], "")
+
+    assert "Completed experiments: 0" in text
+    assert "Completed IDs: none" in text
+    assert "Recorded outcomes: 0" in text
+    assert "Journal sections: 0" in text
+    assert "Calibration MAE: n/a" in text
+    assert "No backlog capability is currently pending." in text
+
+
 def test_render_synthesis_orders_completed_ids_and_ranked_backlog() -> None:
     experiments = [
         experiment("exp-done-b", "Done B", "done"),
@@ -77,6 +88,15 @@ def test_snapshot_does_not_require_or_mutate_journal_text() -> None:
     before = journal
     render_synthesis([], [], journal)
     assert journal == before
+
+
+def test_preview_does_not_write_snapshot(tmp_path, monkeypatch) -> None:
+    store = LabStore(tmp_path)
+    store.save([experiment("exp-a", "Done", "done")])
+    monkeypatch.chdir(tmp_path)
+
+    assert run(write=False) == 0
+    assert not (store.state_dir / "SYNTHESIS.md").exists()
 
 
 def test_write_creates_snapshot_without_rewriting_journal(tmp_path, monkeypatch) -> None:
