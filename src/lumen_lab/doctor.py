@@ -75,13 +75,11 @@ def run_doctor(root: Path) -> DoctorReport:
 
     try:
         manifest = validate_state_schema(root)
-        checks.append(
-            CheckResult(
-                "state-schema",
-                True,
-                f"manifest version {manifest.manifest_version}; {len(manifest.files)} managed files",
-            )
+        detail = (
+            f"manifest version {manifest.manifest_version}; "
+            f"{len(manifest.files)} managed files"
         )
+        checks.append(CheckResult("state-schema", True, detail))
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
         checks.append(CheckResult("state-schema", False, str(exc)))
 
