@@ -70,5 +70,9 @@
   {
     "experiment_id": "exp-018",
     "artifacts": ["src/lumen_lab/profile.py", "docs/profiles.md"]
+  },
+  {
+    "experiment_id": "exp-019",
+    "artifacts": ["src/lumen_lab/proposal.py", "docs/proposals.md"]
   }
 ]
