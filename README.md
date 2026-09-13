@@ -15,11 +15,13 @@ The goal is not to build one fixed product. The repository is an evolving enviro
 
 ## Current capabilities
 
-The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, run controlled subprocess experiments in a constrained temporary workspace, rank a small user-facing mission portfolio through Elaine Mission Radar, and turn the current top mission into a focused work session.
+The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, run controlled subprocess experiments in a constrained temporary workspace, rank a small user-facing mission portfolio through Elaine Mission Radar, turn the current top mission into a focused work session, validate repository state, and inspect explicit experiment provenance.
 
 Mission Radar reads `state/missions.json`, ranks only active missions with a deterministic value/urgency/leverage/momentum/effort/risk formula, and returns a concrete next action. It is read-only and never executes that action. See `docs/mission-radar.md`.
 
 `lumen-work` takes the current top mission, finds its reviewed template in `state/work_sessions.json`, and renders a bounded focus window, ordered checklist, progress, and Definition of Done. Reading a session is write-free. `--done <step>` writes only ignored local runtime progress under `.lumen/`; it does not mutate curated repository state or execute the task for you. See `docs/work-sessions.md`.
+
+`lumen-provenance` validates `state/provenance.json` and shows the primary repository artifacts, recorded outcome, and journal-section presence for completed experiments. It is local, deterministic, read-only, and is also checked by `lumen-doctor`. See `docs/provenance.md`.
 
 Backlog replenishment is dry-run by default and refuses to run while backlog or active work exists. It never calls external services or overwrites an existing experiment ID. See `docs/replenishment.md` for the policy.
 
@@ -36,6 +38,8 @@ lumen status
 lumen ledger
 lumen-radar
 lumen-work
+lumen-doctor
+lumen-provenance --experiment exp-013
 pytest
 ```
 
@@ -59,6 +63,14 @@ Show more of the current mission portfolio:
 ```bash
 lumen-radar --top 3
 lumen-radar --json
+```
+
+Inspect provenance:
+
+```bash
+lumen-provenance
+lumen-provenance --experiment exp-017
+lumen-provenance --json
 ```
 
 Preview next-generation candidates when the queue is empty:
@@ -87,7 +99,7 @@ lumen sandbox --allow python --timeout 2 --json -- python -c "print('hello')"
 ## Repository map
 
 - `src/lumen_lab/` — core engine and CLI.
-- `state/` — backlog, experiment outcomes, mission portfolio, work-session templates, and journal data.
+- `state/` — backlog, experiment outcomes, provenance, mission portfolio, work-session templates, and journal data.
 - `.lumen/` — ignored machine-local runtime progress created only by explicit user actions.
 - `tests/` — executable behavior contracts.
 - `.github/workflows/` — CI and scheduled health checks.
