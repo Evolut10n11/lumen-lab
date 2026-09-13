@@ -82,5 +82,12 @@
     "observed_value": 9,
     "learning_value": 9,
     "result": "Implemented a declarative repository-owned candidate registry with normal Experiment schema validation, duplicate and status guards, deterministic score ranking, existing-ID filtering, dry-run/apply compatibility, tests, documentation, and curated future candidates."
+  },
+  {
+    "experiment_id": "exp-013",
+    "expected_score": 7.85,
+    "observed_value": 8,
+    "learning_value": 10,
+    "result": "Implemented a deterministic read-only state integrity doctor covering backlog/outcome links, candidate registry validation, frozen baseline membership, holdout evaluation, exact synthesis freshness, stable diagnostics, CLI exit codes, tests, and documentation without automatic repair."
   }
 ]
