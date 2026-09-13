@@ -53,12 +53,25 @@ def write_state(
 
     state = root / "state"
     state.mkdir(parents=True)
+    (root / "evidence.txt").write_text("fixture evidence\n", encoding="utf-8")
     (state / "backlog.json").write_text(
         json.dumps([item.to_dict() for item in experiments], indent=2) + "\n",
         encoding="utf-8",
     )
     (state / "outcomes.json").write_text(
         json.dumps([item.to_dict() for item in outcomes], indent=2) + "\n",
+        encoding="utf-8",
+    )
+    completed = [item.id for item in experiments if item.status == "done"]
+    (state / "provenance.json").write_text(
+        json.dumps(
+            [
+                {"experiment_id": identifier, "artifacts": ["evidence.txt"]}
+                for identifier in completed
+            ],
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     (state / "candidates.json").write_text(
@@ -109,6 +122,7 @@ def test_healthy_state_passes_without_writes(tmp_path: Path) -> None:
         "backlog",
         "outcomes",
         "experiment-outcome-links",
+        "provenance",
         "candidate-registry",
         "calibration-baseline",
         "holdout-evaluation",
@@ -122,18 +136,14 @@ def test_duplicate_backlog_ids_fail(tmp_path: Path) -> None:
         tmp_path,
         experiments=[experiment("exp-001"), experiment("exp-001")],
     )
-
     checks = checks_by_name(tmp_path)
-
     assert checks["backlog"][0] is False
     assert "duplicate experiment ids: exp-001" in checks["backlog"][1]
 
 
 def test_duplicate_outcome_ids_fail(tmp_path: Path) -> None:
     write_state(tmp_path, outcomes=[outcome("exp-001"), outcome("exp-001")])
-
     checks = checks_by_name(tmp_path)
-
     assert checks["outcomes"][0] is False
     assert "duplicate outcome ids: exp-001" in checks["outcomes"][1]
 
@@ -144,9 +154,7 @@ def test_orphan_outcome_fails_links(tmp_path: Path) -> None:
         experiments=[experiment("exp-001"), experiment("exp-002")],
         outcomes=[outcome("exp-001"), outcome("exp-999")],
     )
-
     checks = checks_by_name(tmp_path)
-
     assert checks["experiment-outcome-links"][0] is False
     assert "orphan outcome exp-999" in checks["experiment-outcome-links"][1]
 
@@ -157,9 +165,7 @@ def test_outcome_for_non_done_experiment_fails_links(tmp_path: Path) -> None:
         experiments=[experiment("exp-001", status="active")],
         outcomes=[outcome("exp-001")],
     )
-
     checks = checks_by_name(tmp_path)
-
     assert checks["experiment-outcome-links"][0] is False
     assert "references status active" in checks["experiment-outcome-links"][1]
 
@@ -170,27 +176,30 @@ def test_done_without_outcome_fails_links(tmp_path: Path) -> None:
         experiments=[experiment("exp-001"), experiment("exp-002")],
         outcomes=[outcome("exp-001")],
     )
-
     checks = checks_by_name(tmp_path)
-
     assert checks["experiment-outcome-links"][0] is False
     assert "done experiment exp-002 has no outcome" in checks["experiment-outcome-links"][1]
+    assert checks["provenance"][0] is False
+
+
+def test_missing_provenance_artifact_fails(tmp_path: Path) -> None:
+    write_state(tmp_path)
+    (tmp_path / "evidence.txt").unlink()
+    checks = checks_by_name(tmp_path)
+    assert checks["provenance"][0] is False
+    assert "does not exist" in checks["provenance"][1]
 
 
 def test_malformed_candidate_registry_fails(tmp_path: Path) -> None:
     write_state(tmp_path, candidates={"not": "a list"})
-
     checks = checks_by_name(tmp_path)
-
     assert checks["candidate-registry"][0] is False
     assert "candidate registry must contain a JSON list" in checks["candidate-registry"][1]
 
 
 def test_unknown_baseline_training_id_fails_baseline_and_holdout(tmp_path: Path) -> None:
     write_state(tmp_path, training_ids=["exp-999"])
-
     checks = checks_by_name(tmp_path)
-
     assert checks["calibration-baseline"][0] is False
     assert "exp-999" in checks["calibration-baseline"][1]
     assert checks["holdout-evaluation"][0] is False
@@ -198,18 +207,14 @@ def test_unknown_baseline_training_id_fails_baseline_and_holdout(tmp_path: Path)
 
 def test_stale_synthesis_fails(tmp_path: Path) -> None:
     write_state(tmp_path, stale_synthesis=True)
-
     checks = checks_by_name(tmp_path)
-
     assert checks["synthesis"][0] is False
     assert "stale" in checks["synthesis"][1]
 
 
 def test_repository_state_is_healthy() -> None:
     root = Path(__file__).resolve().parents[1]
-
     report = run_doctor(root)
-
     assert report.healthy, [
         f"{check.name}: {check.detail}" for check in report.checks if not check.passed
     ]
