@@ -187,6 +187,17 @@
     "status": "done"
   },
   {
+    "id": "exp-019",
+    "title": "Profile-driven proposal generation",
+    "hypothesis": "Structured proposal generation from profile priorities and repository evidence can keep Lumen adaptive without granting a generator authority to mutate state or execute work.",
+    "impact": 10,
+    "learning": 10,
+    "feasibility": 8,
+    "novelty": 9,
+    "risk": 3,
+    "status": "done"
+  },
+  {
     "id": "exp-014",
     "title": "State schema versioning",
     "hypothesis": "Explicit schema versions and deterministic migrations can let Lumen evolve its persisted state without silent compatibility failures.",
