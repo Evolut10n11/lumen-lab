@@ -30,6 +30,7 @@ from .onboarding import (
     onboarding_context_payload,
     save_onboarding_context,
 )
+from .workspace import UserWorkspace
 
 
 def _payload(request: dict[str, Any]) -> dict[str, Any]:
