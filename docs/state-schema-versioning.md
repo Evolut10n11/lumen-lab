@@ -29,7 +29,7 @@ lumen-schema --migrate
 
 The current migration creates only `state/schema_versions.json` after verifying that every managed payload file exists. It does not rewrite backlog, outcomes, profile, mission, provenance, capability, candidate, calibration, or work-session payloads. If the manifest already exists, validation runs instead of silently replacing it.
 
-Future payload migrations should be added as deterministic version-to-version transforms with tests before a supported version number changes. Unknown future versions fail closed rather than being guessed.
+Future payload migrations should be added as deterministic version-to-version transforms with tests before a supported version number changes. A schema-version bump should update the supported-version code, manifest, migration tests, and migration documentation together in one reviewed change. Unknown future versions fail closed rather than being guessed.
 
 ## Doctor integration
 
