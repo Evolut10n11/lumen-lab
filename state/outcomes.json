@@ -110,5 +110,12 @@
     "observed_value": 8,
     "learning_value": 9,
     "result": "Implemented a deterministic local experiment provenance index with explicit repository-owned artifact links, strict safe-path and completeness validation, read-only human/JSON inspection, experiment filtering, doctor integration, repository-state tests, and documentation without Git-history, network, secret, model, or automatic-repair dependencies."
+  },
+  {
+    "experiment_id": "exp-018",
+    "expected_score": 8.75,
+    "observed_value": 9,
+    "learning_value": 10,
+    "result": "Implemented an explicit validated local profile layer with weighted priorities, tagged mission alignment, neutral Mission Radar and Work Session branding, shared profile-aware ranking, backward-compatible no-profile behavior, tests proving two profiles rank the same portfolio differently, and documentation separating explicit profile data from future optional LLM idea generation."
   }
 ]
