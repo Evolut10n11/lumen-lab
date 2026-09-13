@@ -106,3 +106,13 @@ Expected score: 8.05. Observed score: 8.60. Calibration error: 0.55. Eleven-outc
 
 The frozen baseline remains unchanged. Additional experiments can now accumulate comparable holdout evidence without contaminating the calibration estimate.
 
+## 2026-09-13 — exp-012 completed
+
+Replaced the exhausted source-code candidate tuple with a repository-owned declarative registry. `state/candidates.json` is validated through the normal Experiment schema, rejects duplicate IDs and non-backlog statuses, filters IDs already present in the backlog, and ranks remaining candidates deterministically before dry-run or explicit apply.
+
+The previous `exp-006`, `exp-007`, and `exp-008` templates remain in the registry as provenance while the next curated generation adds `exp-013` state integrity doctor, `exp-015` experiment provenance index, and `exp-014` state schema versioning. The registry itself is never consumed or mutated by replenishment; backlog membership remains the duplicate guard.
+
+Expected score: 8.45. Observed score: 9.00. Calibration error: 0.55. Twelve-outcome calibration MAE: 0.88.
+
+Against the frozen `+0.94` baseline, `exp-012` is the second true holdout: raw error 0.55 becomes 0.39. Across both holdouts the raw MAE is 0.55 and corrected MAE is 0.39, still a 29.09% improvement without refitting. The baseline remains frozen, and the new registry has replenished three pending experiments for the next autonomous cycles.
+

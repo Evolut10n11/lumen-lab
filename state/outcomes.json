@@ -75,5 +75,12 @@
     "observed_value": 8,
     "learning_value": 10,
     "result": "Implemented a frozen deterministic calibration baseline and holdout evaluator with exact training-ID provenance, schema validation, immutable intercept evaluation, CLI reporting, tests, and documentation. The first true holdout reduces absolute error from 0.55 to 0.39 without refitting the baseline."
+  },
+  {
+    "experiment_id": "exp-012",
+    "expected_score": 8.45,
+    "observed_value": 9,
+    "learning_value": 9,
+    "result": "Implemented a declarative repository-owned candidate registry with normal Experiment schema validation, duplicate and status guards, deterministic score ranking, existing-ID filtering, dry-run/apply compatibility, tests, documentation, and curated future candidates."
   }
 ]

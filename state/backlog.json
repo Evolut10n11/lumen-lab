@@ -119,5 +119,49 @@
     "novelty": 6,
     "risk": 1,
     "status": "done"
+  },
+  {
+    "id": "exp-012",
+    "title": "Declarative candidate registry",
+    "hypothesis": "A declarative candidate registry can make future backlog replenishment auditable and extensible without requiring source-code edits for every new generation.",
+    "impact": 9,
+    "learning": 9,
+    "feasibility": 9,
+    "novelty": 7,
+    "risk": 1,
+    "status": "done"
+  },
+  {
+    "id": "exp-013",
+    "title": "State integrity doctor",
+    "hypothesis": "A deterministic cross-file integrity check can catch drift between backlog, outcomes, calibration baselines, and generated snapshots before autonomous work builds on inconsistent state.",
+    "impact": 9,
+    "learning": 8,
+    "feasibility": 9,
+    "novelty": 5,
+    "risk": 1,
+    "status": "backlog"
+  },
+  {
+    "id": "exp-015",
+    "title": "Experiment provenance index",
+    "hypothesis": "A local provenance index linking experiments to evidence artifacts can make completed work easier to audit without making GitHub or generated summaries a source of truth.",
+    "impact": 8,
+    "learning": 8,
+    "feasibility": 8,
+    "novelty": 7,
+    "risk": 1,
+    "status": "backlog"
+  },
+  {
+    "id": "exp-014",
+    "title": "State schema versioning",
+    "hypothesis": "Explicit schema versions and deterministic migrations can let Lumen evolve its persisted state without silent compatibility failures.",
+    "impact": 8,
+    "learning": 9,
+    "feasibility": 7,
+    "novelty": 7,
+    "risk": 2,
+    "status": "backlog"
   }
 ]
