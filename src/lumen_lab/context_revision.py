@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -71,15 +72,49 @@ def _validated_focus_minutes(value: int | None, fallback: int) -> int:
     return int(chosen)
 
 
+def _answer_text(context: dict[str, Any] | None, key: str) -> str | None:
+    if not context:
+        return None
+    answers = context.get("answers")
+    if not isinstance(answers, dict):
+        return None
+    value = answers.get(key)
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _replace_inferred_label(
+    values: Iterable[str],
+    *,
+    old_value: str | None,
+    new_value: str | None,
+    exclude: str | None = None,
+) -> tuple[str, ...]:
+    old_key = normalized_label(old_value) if old_value else None
+    exclude_key = normalized_label(exclude) if exclude else None
+    result: list[str] = []
+    seen: set[str] = set()
+    for raw in values:
+        value = raw.strip()
+        key = normalized_label(value)
+        if old_key is not None and key == old_key:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(value)
+    if new_value:
+        new_key = normalized_label(new_value)
+        if new_key != exclude_key and new_key not in seen:
+            result.insert(0, new_value)
+    return tuple(result)
+
+
 def _hypotheses(context: dict[str, Any]) -> list[dict[str, Any]]:
     raw = context.get("hypotheses")
     if not isinstance(raw, list):
         raw = []
         context["hypotheses"] = raw
-    result: list[dict[str, Any]] = []
-    for item in raw:
-        if isinstance(item, dict):
-            result.append(item)
+    result = [item for item in raw if isinstance(item, dict)]
     if len(result) != len(raw):
         context["hypotheses"] = result
     return result
@@ -153,12 +188,16 @@ def _revision_context(
     friction: str | None,
     focus_minutes: int,
 ) -> dict[str, Any]:
-    context = copy.deepcopy(existing) if existing is not None else {
-        "version": ONBOARDING_CONTEXT_VERSION,
-        "source": "revision",
-        "answers": {},
-        "hypotheses": [],
-    }
+    context = (
+        copy.deepcopy(existing)
+        if existing is not None
+        else {
+            "version": ONBOARDING_CONTEXT_VERSION,
+            "source": "revision",
+            "answers": {},
+            "hypotheses": [],
+        }
+    )
     context["version"] = ONBOARDING_CONTEXT_VERSION
 
     answers = context.get("answers")
@@ -269,13 +308,31 @@ def revise_user_direction(
         _existing_focus_minutes(existing_context),
     )
 
+    previous_context = _answer_text(existing_context, "current_context")
+    previous_friction = _answer_text(existing_context, "friction")
+    interests = profile.interests
+    constraints = profile.constraints
+    if current_context is not None:
+        interests = _replace_inferred_label(
+            interests,
+            old_value=previous_context,
+            new_value=current_context or None,
+            exclude=new_goal,
+        )
+    if friction is not None:
+        constraints = _replace_inferred_label(
+            constraints,
+            old_value=previous_friction,
+            new_value=friction or None,
+        )
+
     revised_profile = build_profile(
         user_id=profile.id,
         display_name=profile.display_name,
         priorities=_revised_priorities(profile, new_goal),
         skills=profile.skills,
-        interests=profile.interests,
-        constraints=profile.constraints,
+        interests=interests,
+        constraints=constraints,
         preferred_stack=profile.preferred_stack,
         risk_tolerance=profile.risk_tolerance,
         policy_mode=profile.candidate_generation_policy.mode,
