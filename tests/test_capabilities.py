@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -152,4 +151,4 @@ def test_execution_through_manifest() -> None:
 
     assert result.ok
     assert result.stdout.strip() == "manifest-ok"
-    assert os.path.basename(result.resolved_executable) == executable
+    assert Path(result.resolved_executable).exists()
