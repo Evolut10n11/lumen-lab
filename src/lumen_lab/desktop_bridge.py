@@ -14,6 +14,8 @@ from .context_learning import (
 from .feedback import load_feedback, record_feedback
 from .github_user_context import (
     GitHubPublicContextClient,
+    apply_github_evidence,
+    clear_github_evidence,
     disconnect_github,
     github_integration_payload,
     load_github_snapshot,
@@ -201,6 +203,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         workspace = app.workspace(user_id)
         snapshot = GitHubPublicContextClient().fetch(_github_username(payload))
         save_github_snapshot(workspace.github_context_path, snapshot)
+        apply_github_evidence(workspace.onboarding_context_path, snapshot)
         return _dashboard_with_context(app, user_id)
 
     if action == "github_refresh":
@@ -212,15 +215,15 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         username = account.get("username") if isinstance(account, dict) else None
         if not isinstance(username, str) or not username:
             raise ValueError("saved GitHub context does not contain a username")
-        save_github_snapshot(
-            workspace.github_context_path,
-            GitHubPublicContextClient().fetch(username),
-        )
+        snapshot = GitHubPublicContextClient().fetch(username)
+        save_github_snapshot(workspace.github_context_path, snapshot)
+        apply_github_evidence(workspace.onboarding_context_path, snapshot)
         return _dashboard_with_context(app, user_id)
 
     if action == "github_disconnect":
         workspace = app.workspace(user_id)
         disconnect_github(workspace.github_context_path)
+        clear_github_evidence(workspace.onboarding_context_path)
         return _dashboard_with_context(app, user_id)
 
     if action == "react":
