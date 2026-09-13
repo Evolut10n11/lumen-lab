@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from .mission_radar import load_missions
@@ -16,8 +17,18 @@ from .proposal import (
     validate_evidence,
 )
 from .store import LabStore
+from .workspace import UserWorkspace
 
 DEFAULT_REVIEW_PATH = Path(".lumen/proposals.json")
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalContext:
+    root: Path
+    profile_path: Path
+    missions_path: Path
+    store: LabStore
+    workspace: UserWorkspace | None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,7 +36,18 @@ def build_parser() -> argparse.ArgumentParser:
         prog="lumen-propose",
         description="Generate reviewable experiment proposals without executing them.",
     )
-    parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument(
+        "--root",
+        type=Path,
+        help=(
+            "Repository root. Supplying --root without --user keeps the explicit legacy/developer "
+            "repository-state mode used by tests and lab maintenance."
+        ),
+    )
+    parser.add_argument(
+        "--user",
+        help="Local user id. Normal interactive use defaults to LUMEN_USER_ID or 'default'.",
+    )
     parser.add_argument("--profile", type=Path)
     parser.add_argument("--missions", type=Path)
     parser.add_argument("--json", action="store_true")
@@ -51,11 +73,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _paths(args: argparse.Namespace) -> tuple[Path, Path]:
-    state = args.root / "state"
-    profile = args.profile or state / "profile.json"
-    missions = args.missions or state / "missions.json"
-    return profile, missions
+def _context(args: argparse.Namespace) -> ProposalContext:
+    root = args.root or Path.cwd()
+    use_user_workspace = args.user is not None or args.root is None
+    if use_user_workspace:
+        workspace = UserWorkspace.from_root(root, args.user)
+        workspace.require_initialized()
+        return ProposalContext(
+            root=root,
+            profile_path=args.profile or workspace.profile_path,
+            missions_path=args.missions or workspace.missions_path,
+            store=LabStore(root, state_directory=workspace.directory),
+            workspace=workspace,
+        )
+
+    state = root / "state"
+    return ProposalContext(
+        root=root,
+        profile_path=args.profile or state / "profile.json",
+        missions_path=args.missions or state / "missions.json",
+        store=LabStore(root),
+        workspace=None,
+    )
 
 
 def _adapter(args: argparse.Namespace, profile) -> OpenAICompatibleProposalGenerator | None:
@@ -97,10 +136,10 @@ def _accept(args: argparse.Namespace, profile, missions, store: LabStore) -> int
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        profile_path, missions_path = _paths(args)
-        profile = load_profile(profile_path)
-        missions = load_missions(missions_path)
-        store = LabStore(args.root)
+        context = _context(args)
+        profile = load_profile(context.profile_path)
+        missions = load_missions(context.missions_path)
+        store = context.store
 
         accepting = any((args.accept_file, args.accept, args.experiment_id))
         if accepting:
