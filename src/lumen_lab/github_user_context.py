@@ -10,8 +10,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .onboarding import load_onboarding_context, save_onboarding_context
+
 GITHUB_CONTEXT_SCHEMA_VERSION = 1
 _GITHUB_USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
+_GITHUB_HYPOTHESIS_KEYS = {"github_active_project", "github_primary_language"}
 
 
 def validate_github_username(value: str) -> str:
@@ -229,6 +232,95 @@ def load_github_snapshot(path: Path) -> dict[str, Any] | None:
     if raw.get("schema_version") != GITHUB_CONTEXT_SCHEMA_VERSION:
         raise ValueError("unsupported GitHub context schema version")
     return raw
+
+
+def _refresh_average_confidence(context: dict[str, Any]) -> None:
+    hypotheses = context.get("hypotheses")
+    if not isinstance(hypotheses, list):
+        return
+    values = [
+        float(item["confidence"])
+        for item in hypotheses
+        if isinstance(item, dict) and isinstance(item.get("confidence"), (int, float))
+    ]
+    context["average_confidence"] = round(sum(values) / len(values), 2) if values else 0.0
+
+
+def apply_github_evidence(context_path: Path, snapshot: dict[str, Any]) -> None:
+    """Add low-confidence GitHub evidence to the user's revisable context model."""
+    context = load_onboarding_context(context_path)
+    if context is None:
+        return
+    hypotheses = context.get("hypotheses")
+    if not isinstance(hypotheses, list):
+        hypotheses = []
+        context["hypotheses"] = hypotheses
+    hypotheses[:] = [
+        item
+        for item in hypotheses
+        if not isinstance(item, dict) or item.get("key") not in _GITHUB_HYPOTHESIS_KEYS
+    ]
+
+    signals = snapshot.get("signals")
+    signals = signals if isinstance(signals, dict) else {}
+    active_project = _text(signals.get("active_project"))
+    primary_language = _text(signals.get("primary_language"))
+    if active_project:
+        hypotheses.append(
+            {
+                "key": "github_active_project",
+                "label": "GitHub activity points to",
+                "value": active_project,
+                "confidence": 0.55,
+                "source": "github_public_activity",
+            }
+        )
+    if primary_language:
+        hypotheses.append(
+            {
+                "key": "github_primary_language",
+                "label": "Your public GitHub work often uses",
+                "value": primary_language,
+                "confidence": 0.52,
+                "source": "github_public_repositories",
+            }
+        )
+
+    account = snapshot.get("account")
+    account = account if isinstance(account, dict) else {}
+    external = context.get("external_evidence")
+    if not isinstance(external, dict):
+        external = {}
+        context["external_evidence"] = external
+    external["github"] = {
+        "username": account.get("username"),
+        "fetched_at": snapshot.get("fetched_at"),
+        "source": snapshot.get("source"),
+        "active_project": active_project,
+        "primary_language": primary_language,
+    }
+    _refresh_average_confidence(context)
+    save_onboarding_context(context_path, context)
+
+
+def clear_github_evidence(context_path: Path) -> None:
+    context = load_onboarding_context(context_path)
+    if context is None:
+        return
+    hypotheses = context.get("hypotheses")
+    if isinstance(hypotheses, list):
+        hypotheses[:] = [
+            item
+            for item in hypotheses
+            if not isinstance(item, dict) or item.get("key") not in _GITHUB_HYPOTHESIS_KEYS
+        ]
+    external = context.get("external_evidence")
+    if isinstance(external, dict):
+        external.pop("github", None)
+        if not external:
+            context.pop("external_evidence", None)
+    _refresh_average_confidence(context)
+    save_onboarding_context(context_path, context)
 
 
 def github_integration_payload(snapshot: dict[str, Any] | None) -> dict[str, Any]:
