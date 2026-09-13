@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .localization import is_russian, locale_from_context, normalize_locale
 from .onboarding import ALLOWED_FOCUS_MINUTES, load_onboarding_context, save_onboarding_context
 from .profile import normalized_label
 
@@ -97,7 +98,6 @@ def observe_context_signal(
         elif signal_key == "less_like_this":
             learning["primary_goal_conflict"] += 1
         elif signal_key == "not_now":
-            # Deferral is deliberately not treated as evidence that the goal itself is wrong.
             learning["primary_goal_deferrals"] += 1
 
         if delta:
@@ -109,7 +109,11 @@ def observe_context_signal(
     return context
 
 
-def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] | None:
+def clarification_for_context(
+    context: dict[str, Any] | None,
+    *,
+    locale: str | None = None,
+) -> dict[str, Any] | None:
     """Return at most one low-friction question when behavior contradicts the current model."""
     if not context:
         return None
@@ -119,6 +123,12 @@ def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] 
     if learning.get("events", 0) < learning.get("snooze_until_event", 0):
         return None
 
+    resolved_locale = (
+        locale_from_context(context)
+        if locale is None
+        else normalize_locale(locale)
+    )
+    russian = is_russian(resolved_locale)
     goal = _hypothesis(context, "primary_goal")
     if goal is None or not isinstance(goal.get("value"), str):
         return None
@@ -130,14 +140,26 @@ def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] 
             "id": "primary_goal_fit",
             "kind": "direction",
             "prompt": (
-                f"You’ve been steering away from work tied to “{label}”. "
-                "Is this still a direction you want Lumen to prioritize?"
+                f"Вы несколько раз уходили от задач, связанных с «{label}». Это всё ещё направление, которое Lumen стоит ставить в приоритет?"
+                if russian
+                else (
+                    f"You’ve been steering away from work tied to “{label}”. "
+                    "Is this still a direction you want Lumen to prioritize?"
+                )
             ),
-            "options": [
-                {"choice": "keep_goal", "label": "Yes, keep it"},
-                {"choice": "pause_goal", "label": "Not right now"},
-                {"choice": "not_sure", "label": "I’m not sure"},
-            ],
+            "options": (
+                [
+                    {"choice": "keep_goal", "label": "Да, оставить"},
+                    {"choice": "pause_goal", "label": "Не сейчас"},
+                    {"choice": "not_sure", "label": "Не уверен"},
+                ]
+                if russian
+                else [
+                    {"choice": "keep_goal", "label": "Yes, keep it"},
+                    {"choice": "pause_goal", "label": "Not right now"},
+                    {"choice": "not_sure", "label": "I’m not sure"},
+                ]
+            ),
         }
 
     if learning.get("primary_goal_deferrals", 0) >= 3:
@@ -145,14 +167,26 @@ def clarification_for_context(context: dict[str, Any] | None) -> dict[str, Any] 
             "id": "repeated_deferral",
             "kind": "fit",
             "prompt": (
-                f"Work toward “{label}” keeps getting postponed. "
-                "What would make Lumen more useful here?"
+                f"Задачи по направлению «{label}» постоянно откладываются. Что сделает Lumen полезнее?"
+                if russian
+                else (
+                    f"Work toward “{label}” keeps getting postponed. "
+                    "What would make Lumen more useful here?"
+                )
             ),
-            "options": [
-                {"choice": "make_smaller", "label": "Give me smaller steps"},
-                {"choice": "bad_timing", "label": "The timing is bad"},
-                {"choice": "not_useful", "label": "This work isn’t useful"},
-            ],
+            "options": (
+                [
+                    {"choice": "make_smaller", "label": "Давай мельче"},
+                    {"choice": "bad_timing", "label": "Сейчас плохой момент"},
+                    {"choice": "not_useful", "label": "Эти задачи не полезны"},
+                ]
+                if russian
+                else [
+                    {"choice": "make_smaller", "label": "Give me smaller steps"},
+                    {"choice": "bad_timing", "label": "The timing is bad"},
+                    {"choice": "not_useful", "label": "This work isn’t useful"},
+                ]
+            ),
         }
 
     return None
@@ -208,7 +242,11 @@ def answer_context_clarification(
                 answers["focus_minutes"] = focus_minutes
             focus = _hypothesis(context, "focus_window")
             if focus is not None:
-                focus["value"] = f"{focus_minutes} minutes"
+                focus["value"] = (
+                    f"{focus_minutes} минут"
+                    if is_russian(locale_from_context(context))
+                    else f"{focus_minutes} minutes"
+                )
                 focus["confidence"] = 0.98
                 focus["source"] = "adjusted_by_user"
             effects["focus_minutes"] = focus_minutes
