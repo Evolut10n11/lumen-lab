@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
+from .github_bridge import GitHubIssueClient, plan_sync
 from .ledger import Outcome, mean_absolute_calibration_error
 from .models import Experiment
 from .planner import choose_next, ranked
@@ -174,6 +176,42 @@ def cmd_ledger(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_github_sync(args: argparse.Namespace) -> int:
+    store = _store()
+    experiments = store.load()
+
+    if not args.apply:
+        actions = plan_sync(experiments, [])
+        if not actions:
+            print("No pending experiments to mirror.")
+            return 0
+        print("Dry run: no GitHub requests were made.")
+        for action in actions:
+            print(f"CREATE {action.experiment_id}: {action.title}")
+        print("Use --apply with --repository and a token to compare against GitHub.")
+        return 0
+
+    repository = args.repository.strip()
+    if not repository:
+        raise SystemExit("--repository owner/name is required with --apply")
+    token = args.token.strip() or os.environ.get("GITHUB_TOKEN", "").strip()
+    if not token:
+        raise SystemExit("--token or GITHUB_TOKEN is required with --apply")
+
+    client = GitHubIssueClient(repository, token)
+    remote = client.list_open_issues()
+    actions = plan_sync(experiments, remote)
+    if not actions:
+        print("GitHub Issues are already synchronized.")
+        return 0
+
+    client.apply(actions)
+    for action in actions:
+        number = "new" if action.issue_number is None else f"#{action.issue_number}"
+        print(f"{action.kind.upper()} {number} {action.experiment_id}: {action.title}")
+    return 0
+
+
 def cmd_journal(args: argparse.Namespace) -> int:
     _store().append_journal(args.title, args.body)
     print("Journal entry appended.")
@@ -245,6 +283,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     ledger = subparsers.add_parser("ledger", help="Show experiment calibration outcomes.")
     ledger.set_defaults(func=cmd_ledger)
+
+    github_sync = subparsers.add_parser(
+        "github-sync",
+        help="Plan or apply the safe GitHub Issues mirror.",
+    )
+    github_sync.add_argument("--apply", action="store_true")
+    github_sync.add_argument("--repository", default="")
+    github_sync.add_argument("--token", default="")
+    github_sync.set_defaults(func=cmd_github_sync)
 
     journal = subparsers.add_parser("journal", help="Append a manual lab journal entry.")
     journal.add_argument("title")
