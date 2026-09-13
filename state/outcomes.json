@@ -103,5 +103,12 @@
     "observed_value": 8,
     "learning_value": 10,
     "result": "Implemented a deterministic read-only state integrity doctor covering backlog/outcome links, candidate registry validation, frozen baseline membership, holdout evaluation, exact synthesis freshness, stable diagnostics, CLI exit codes, tests, and documentation without automatic repair."
+  },
+  {
+    "experiment_id": "exp-015",
+    "expected_score": 7.6,
+    "observed_value": 8,
+    "learning_value": 9,
+    "result": "Implemented a deterministic local experiment provenance index with explicit repository-owned artifact links, strict safe-path and completeness validation, read-only human/JSON inspection, experiment filtering, doctor integration, repository-state tests, and documentation without Git-history, network, secret, model, or automatic-repair dependencies."
   }
 ]
