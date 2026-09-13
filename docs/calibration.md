@@ -20,7 +20,7 @@ Weights must not be changed from a single outcome. A calibration checkpoint requ
 
 ## Calibration checkpoint
 
-`lumen calibrate` summarizes residuals where:
+`lumen-calibrate` summarizes residuals where:
 
 ```text
 residual = observed score - expected score
