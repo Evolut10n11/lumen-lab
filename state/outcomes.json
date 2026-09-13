@@ -12,5 +12,12 @@
     "observed_value": 8,
     "learning_value": 8,
     "result": "Implemented a conservative GitHub Issues bridge with deterministic ownership markers, dry-run by default, explicit apply mode, unmanaged-issue protection, tests, and safety documentation."
+  },
+  {
+    "experiment_id": "exp-002",
+    "expected_score": 6.65,
+    "observed_value": 8,
+    "learning_value": 9,
+    "result": "Implemented an optional provider-neutral OpenAI-compatible planning adapter with deterministic fallback, backlog-ID validation, local-model support, CLI integration, tests, and safety documentation."
   }
 ]
