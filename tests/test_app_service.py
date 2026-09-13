@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from lumen_lab.app_cli import main as dashboard_main
-from lumen_lab.app_service import LumenApplication
+from lumen_lab.app_service import APP_SCHEMA_VERSION, LumenApplication
 from lumen_lab.personalization import build_profile, initialize_workspace
 from lumen_lab.workspace import UserWorkspace
 
@@ -26,6 +26,36 @@ def _initialize(root: Path, user_id: str, priority: str, interest: str) -> UserW
     return workspace
 
 
+def test_bootstrap_routes_new_user_to_onboarding(tmp_path: Path) -> None:
+    payload = LumenApplication(tmp_path).bootstrap("alice")
+
+    assert payload == {
+        "schema_version": APP_SCHEMA_VERSION,
+        "selected_user_id": "alice",
+        "initialized": False,
+        "users": [],
+        "dashboard": None,
+    }
+
+
+def test_bootstrap_lists_users_and_embeds_selected_dashboard(tmp_path: Path) -> None:
+    app = LumenApplication(tmp_path)
+    app.onboard("alice", display_name="Alice", priorities={"career": 10})
+    app.onboard("bob", display_name="Bob", priorities={"health": 10})
+
+    payload = app.bootstrap("bob", top=2)
+
+    assert payload["schema_version"] == APP_SCHEMA_VERSION
+    assert payload["selected_user_id"] == "bob"
+    assert payload["initialized"] is True
+    assert payload["users"] == [
+        {"id": "alice", "display_name": "Alice"},
+        {"id": "bob", "display_name": "Bob"},
+    ]
+    assert payload["dashboard"]["user"]["id"] == "bob"
+    assert len(payload["dashboard"]["radar"]) == 2
+
+
 def test_onboard_creates_first_personalized_dashboard(tmp_path: Path) -> None:
     app = LumenApplication(tmp_path)
 
@@ -39,6 +69,7 @@ def test_onboard_creates_first_personalized_dashboard(tmp_path: Path) -> None:
         risk_tolerance=4,
     )
 
+    assert payload["schema_version"] == APP_SCHEMA_VERSION
     assert payload["user"]["id"] == "alice"
     assert payload["user"]["priorities"] == {"career": 10, "health": 7}
     assert payload["today"]["profile_id"] == "alice"
@@ -79,6 +110,7 @@ def test_dashboard_is_scoped_to_selected_user(tmp_path: Path) -> None:
     alice = app.dashboard("alice")
     bob = app.dashboard("bob")
 
+    assert alice["schema_version"] == APP_SCHEMA_VERSION
     assert alice["user"]["id"] == "alice"
     assert bob["user"]["id"] == "bob"
     assert "career" in alice["today"]["title"].casefold()
@@ -120,6 +152,7 @@ def test_dashboard_cli_emits_application_json(tmp_path: Path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
 
     assert code == 0
+    assert payload["schema_version"] == APP_SCHEMA_VERSION
     assert payload["user"]["id"] == "alice"
     assert len(payload["radar"]) == 2
     assert payload["today"]["profile_id"] == "alice"
