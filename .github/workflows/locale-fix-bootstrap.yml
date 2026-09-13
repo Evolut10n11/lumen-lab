@@ -1,5 +1,6 @@
 name: Locale fix bootstrap
 
+# One-shot integration helper; it removes itself after a successful targeted test run.
 on:
   push:
     branches:
