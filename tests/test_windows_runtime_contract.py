@@ -27,3 +27,13 @@ def test_installer_stages_engine_at_configured_source_path() -> None:
 
     assert "apps\\desktop\\src-tauri\\resources\\lumen-engine.exe" in workflow
     assert "Copy-Item dist\\lumen-engine.exe" in workflow
+
+
+def test_installer_smoke_tests_engine_from_installed_nsis_bundle() -> None:
+    workflow = INSTALLER_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "Install and smoke test NSIS bundle" in workflow
+    assert "Start-Process -FilePath $installer.FullName" in workflow
+    assert "-ArgumentList @('/S', \"/D=$installDir\")" in workflow
+    assert "Get-ChildItem -Path $installDir -Filter lumen-engine.exe -Recurse" in workflow
+    assert '"user_id":"installed-smoke"' in workflow
