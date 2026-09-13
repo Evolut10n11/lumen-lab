@@ -9,6 +9,13 @@ The installer build creates `lumen-engine.exe` with PyInstaller, smoke-tests it 
 
 `apps/desktop/src-tauri/tauri.windows.conf.json` maps that staged source to `lumen-engine.exe` at the Tauri resource root. The Rust host resolves `lumen-engine.exe` relative to `BaseDirectory::Resource` in release builds. Development builds may fall back to `python -m lumen_lab.desktop_bridge`, but release builds must fail with a detailed error when the packaged engine is missing rather than silently using an ambient Python installation.
 
-`tests/test_windows_runtime_contract.py` pins these three sides of the contract together: the workflow staging path, the Tauri resource mapping, and the Rust resource-root lookup. This test is intentionally cross-platform and does not install or execute the Windows bundle. The Windows Installer workflow remains responsible for building the real NSIS artifact and smoke-testing the standalone engine.
+`tests/test_windows_runtime_contract.py` pins the packaging surfaces together: the workflow staging path, the Tauri resource mapping, the Rust resource-root lookup, and the installed-bundle smoke-test contract.
 
-When changing any packaged-engine path, update all three surfaces in the same pull request and keep the contract test green.
+The Windows Installer workflow performs two runtime checks on `windows-latest`:
+
+1. it executes the standalone PyInstaller engine before bundling;
+2. after Tauri produces the real NSIS artifact, it silently installs that artifact into an isolated temporary directory, locates `lumen-engine.exe` from the installed files, and runs a bootstrap request through that installed executable.
+
+The second check is important because it catches resource-mapping and installer-layout regressions that a pre-bundle smoke test cannot detect. It is still not a substitute for exploratory UI testing on a normal end-user Windows machine, but packaged-engine startup no longer depends solely on that manual check.
+
+When changing any packaged-engine path, installer type, or runtime lookup behavior, update all four surfaces in the same pull request and keep the contract test and Windows Installer workflow green.
