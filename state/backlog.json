@@ -108,5 +108,16 @@
     "novelty": 5,
     "risk": 1,
     "status": "done"
+  },
+  {
+    "id": "exp-011",
+    "title": "Frozen calibration holdout baseline",
+    "hypothesis": "Freezing the additive intercept before later outcomes arrive will provide cleaner evidence about whether absolute-score calibration generalizes.",
+    "impact": 8,
+    "learning": 10,
+    "feasibility": 8,
+    "novelty": 6,
+    "risk": 1,
+    "status": "done"
   }
 ]

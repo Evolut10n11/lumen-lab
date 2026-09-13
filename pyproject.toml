@@ -25,6 +25,7 @@ lumen-synthesize = "lumen_lab.synthesis_cli:main"
 lumen-capabilities = "lumen_lab.capabilities_cli:main"
 lumen-rankcheck = "lumen_lab.ranking_cli:main"
 lumen-intercept = "lumen_lab.intercept_cli:main"
+lumen-holdout = "lumen_lab.holdout_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

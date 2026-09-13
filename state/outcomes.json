@@ -68,5 +68,12 @@
     "observed_value": 8,
     "learning_value": 10,
     "result": "Implemented a deterministic leave-one-out additive-intercept calibration checkpoint with fixed evidence gates, CLI reporting, tests, and documentation. Current evidence reduces MAE from 0.99 to 0.52 with a proposed +0.99 advisory intercept while preserving relative ranking order."
+  },
+  {
+    "experiment_id": "exp-011",
+    "expected_score": 8.05,
+    "observed_value": 8,
+    "learning_value": 10,
+    "result": "Implemented a frozen deterministic calibration baseline and holdout evaluator with exact training-ID provenance, schema validation, immutable intercept evaluation, CLI reporting, tests, and documentation. The first true holdout reduces absolute error from 0.55 to 0.39 without refitting the baseline."
   }
 ]
