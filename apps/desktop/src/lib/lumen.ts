@@ -31,6 +31,25 @@ export type UserContext = {
   };
   hypotheses: ContextHypothesis[];
   average_confidence: number;
+  learning?: {
+    events: number;
+    primary_goal_support: number;
+    primary_goal_conflict: number;
+    primary_goal_deferrals: number;
+    last_mission_id: string | null;
+    last_signal: string | null;
+    snooze_until_event: number;
+  };
+};
+
+export type ContextClarification = {
+  id: string;
+  kind: "direction" | "fit";
+  prompt: string;
+  options: Array<{
+    choice: string;
+    label: string;
+  }>;
 };
 
 export type Dashboard = {
@@ -41,6 +60,7 @@ export type Dashboard = {
     priorities?: Record<string, number>;
   };
   context?: UserContext | null;
+  clarification?: ContextClarification | null;
   experience: {
     headline: string;
     message: string;
@@ -167,6 +187,17 @@ export function reactToMission(
   return request<Dashboard>("react", userId, {
     reaction,
     mission_id: missionId,
+  });
+}
+
+export function answerClarification(
+  userId: string,
+  clarificationId: string,
+  choice: string,
+): Promise<Dashboard> {
+  return request<Dashboard>("clarify_context", userId, {
+    clarification_id: clarificationId,
+    choice,
   });
 }
 
