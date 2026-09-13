@@ -5,19 +5,19 @@ It does not use a model, network service, or secret, and it does not modify the 
 
 ## Evidence
 
-- Completed experiments: 13
-- Completed IDs: `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-016`
-- Recorded outcomes: 13
-- Journal sections: 14
-- Calibration MAE: 0.85
-- Mean signed residual: +0.85
+- Completed experiments: 14
+- Completed IDs: `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-016`, `exp-017`
+- Recorded outcomes: 14
+- Journal sections: 15
+- Calibration MAE: 0.83
+- Mean signed residual: +0.83
 - Calibration direction: systematic-underprediction
 
 ## Repeated lesson signals
 
-- `deterministic-controls` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-016`
-- `safety-boundaries` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-007`, `exp-016`
-- `tests-and-documentation` — supported by `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-016`
+- `deterministic-controls` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-016`, `exp-017`
+- `safety-boundaries` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-007`, `exp-016`, `exp-017`
+- `tests-and-documentation` — supported by `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-016`, `exp-017`
 
 ## Missing capabilities
 

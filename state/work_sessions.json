@@ -1,0 +1,53 @@
+[
+  {
+    "mission_id": "career-ai-portfolio",
+    "focus_minutes": 60,
+    "steps": [
+      "Choose one real production LLM project that you personally worked on and that you can discuss without exposing confidential details.",
+      "Write the problem and user/business goal in 3-5 sentences, including what made the problem hard.",
+      "Sketch the architecture: entry point, backend, model/provider, RAG or agent flow, storage, integrations, and observability.",
+      "Add concrete engineering evidence: latency, quality, retrieval metrics, failure rate, scale, or another measurement you actually observed.",
+      "Write three failure modes or difficult trade-offs and what you personally changed to handle them.",
+      "Compress the result into a one-page Markdown case that can be reused for interviews and a portfolio."
+    ],
+    "definition_of_done": "A one-page production LLM case exists with a clear problem, architecture, model/RAG/agent flow, at least one real measurement, three failure modes or trade-offs, and an explicit description of your personal engineering decisions."
+  },
+  {
+    "mission_id": "lumen-partner",
+    "focus_minutes": 45,
+    "steps": [
+      "Run lumen-radar and confirm that the top mission still matches current priorities.",
+      "Run lumen-work and inspect whether every step is concrete enough to execute without inventing missing context.",
+      "Complete one full work session and mark each finished step with lumen-work --done.",
+      "Write down one friction point that slowed the session and one capability that would remove it.",
+      "Turn the highest-value friction point into the next small Lumen experiment."
+    ],
+    "definition_of_done": "One real work session has been completed through Lumen, progress is recorded locally, and at least one observed friction point has been converted into a concrete next experiment."
+  },
+  {
+    "mission_id": "robotci",
+    "focus_minutes": 75,
+    "steps": [
+      "Choose one robotics CI failure that can be detected locally and deterministically.",
+      "Define the rule contract: input, expected diagnostic, exit behavior, and false-positive boundary.",
+      "Add a minimal failing fixture that reproduces the problem.",
+      "Implement the rule and expose it through the existing RobotCI CLI path.",
+      "Add passing and failing tests plus a readable CLI-output assertion.",
+      "Document the rule with one copy-paste example in the README."
+    ],
+    "definition_of_done": "RobotCI contains one end-to-end rule with a realistic failing fixture, deterministic diagnostic, green tests, CLI integration, and a README example."
+  },
+  {
+    "mission_id": "elaine-live",
+    "focus_minutes": 90,
+    "steps": [
+      "Freeze the current Elaine live stack for this acceptance run; do not add features during measurement.",
+      "Define the 25-interaction script and the exact success criterion for one interaction.",
+      "Run 25 consecutive voice interactions under the same environment and record every result.",
+      "Calculate completion rate, median end-to-end latency, and p95 latency.",
+      "Classify every miss into a concrete failure reason such as VAD, ASR, LLM, TTS, transport, or avatar playback.",
+      "Choose the single largest failure bucket as the next engineering target."
+    ],
+    "definition_of_done": "A 25-interaction acceptance report exists with completion rate, median latency, p95 latency, a failure reason for every miss, and one evidence-backed next engineering target."
+  }
+]

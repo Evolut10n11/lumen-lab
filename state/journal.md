@@ -125,3 +125,13 @@ The initial portfolio covers career leverage, Lumen itself, RobotCI, and the Ela
 Expected score: 8.70. Observed score: 9.30. Calibration error: 0.60. Thirteen-outcome calibration MAE: 0.85.
 
 Against the frozen `+0.94` baseline, `exp-016` is the third true holdout: raw error 0.60 becomes 0.34. Across the three holdouts the raw MAE is 0.57 and corrected MAE is 0.37, a 35.09% improvement without refitting. The main product learning is that Lumen now has a clean boundary between its internal experiment backlog and a user-facing mission portfolio, so future features can help the user without turning personal goals into autonomous executable actions.
+
+## 2026-09-13 — exp-017 completed
+
+Implemented `lumen-work` so the Mission Radar recommendation becomes a bounded, executable-by-the-user session instead of ending at a sentence. Reviewed templates in `state/work_sessions.json` provide a focus window, ordered steps, and a Definition of Done for each current mission. The default selection reuses Mission Radar ranking, while `--mission` allows an explicit active-mission override and `--json` exposes the same session deterministically for integrations.
+
+The default command is read-only. Progress changes require an explicit `--done <step-number>` and are written only to ignored `.lumen/work_progress.json`; mission definitions and templates are never rewritten. Lumen still does not execute the listed task, call a model, use secrets, or perform network/account actions. CI passed on Python 3.11, 3.12, and 3.13 after fixing the initial lint-only failure.
+
+Expected score: 8.45. Observed score: 9.00. Calibration error: 0.55. Fourteen-outcome calibration MAE: 0.83.
+
+Against the frozen `+0.94` baseline, `exp-017` is the fourth true holdout: raw error 0.55 becomes 0.39. Across four holdouts the raw MAE is 0.56 and corrected MAE is 0.38, a 32.89% improvement without refitting. The product learning is that mission selection and work execution can stay cleanly separated: Elaine can decide what deserves focus, structure the session, and track local progress without silently acquiring authority to perform external actions.

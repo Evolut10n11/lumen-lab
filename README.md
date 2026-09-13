@@ -15,9 +15,11 @@ The goal is not to build one fixed product. The repository is an evolving enviro
 
 ## Current capabilities
 
-The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, run controlled subprocess experiments in a constrained temporary workspace, and rank a small user-facing mission portfolio through Elaine Mission Radar.
+The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, run controlled subprocess experiments in a constrained temporary workspace, rank a small user-facing mission portfolio through Elaine Mission Radar, and turn the current top mission into a focused work session.
 
 Mission Radar reads `state/missions.json`, ranks only active missions with a deterministic value/urgency/leverage/momentum/effort/risk formula, and returns a concrete next action. It is read-only and never executes that action. See `docs/mission-radar.md`.
+
+`lumen-work` takes the current top mission, finds its reviewed template in `state/work_sessions.json`, and renders a bounded focus window, ordered checklist, progress, and Definition of Done. Reading a session is write-free. `--done <step>` writes only ignored local runtime progress under `.lumen/`; it does not mutate curated repository state or execute the task for you. See `docs/work-sessions.md`.
 
 Backlog replenishment is dry-run by default and refuses to run while backlog or active work exists. It never calls external services or overwrites an existing experiment ID. See `docs/replenishment.md` for the policy.
 
@@ -33,7 +35,23 @@ python -m pip install -e .[dev]
 lumen status
 lumen ledger
 lumen-radar
+lumen-work
 pytest
+```
+
+Start a focused session and record progress:
+
+```bash
+lumen-work
+lumen-work --done 1
+lumen-work --done 2
+lumen-work --json
+```
+
+Choose another active mission explicitly:
+
+```bash
+lumen-work --mission robotci
 ```
 
 Show more of the current mission portfolio:
@@ -69,7 +87,8 @@ lumen sandbox --allow python --timeout 2 --json -- python -c "print('hello')"
 ## Repository map
 
 - `src/lumen_lab/` — core engine and CLI.
-- `state/` — backlog, experiment outcomes, mission portfolio, and journal data.
+- `state/` — backlog, experiment outcomes, mission portfolio, work-session templates, and journal data.
+- `.lumen/` — ignored machine-local runtime progress created only by explicit user actions.
 - `tests/` — executable behavior contracts.
 - `.github/workflows/` — CI and scheduled health checks.
 - `docs/` — architecture, safety notes, and operating guidance.
