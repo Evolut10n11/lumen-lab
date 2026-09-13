@@ -14,6 +14,24 @@ Every call is resolved through `UserWorkspace` and therefore reads or writes onl
 
 If `user_id` is omitted, the same default-user resolution used by the CLI applies (`LUMEN_USER_ID`, then `default`).
 
+## Bootstrap
+
+A GUI can ask for one startup payload before it decides which screen to render:
+
+```python
+payload = app.bootstrap("alice")
+```
+
+The bootstrap payload contains:
+
+- `schema_version`: the application contract version;
+- `selected_user_id`: the user the app resolved for this launch;
+- `initialized`: whether that user's workspace already exists;
+- `users`: initialized local users available for profile switching;
+- `dashboard`: the selected user's dashboard when initialized, otherwise `null`.
+
+This gives the client a deterministic startup rule: render onboarding when `initialized` is false, otherwise render the main dashboard. The GUI never needs to inspect `.lumen/` directly.
+
 ## Onboarding
 
 The app layer can create an isolated user directly from explicit inputs:
@@ -44,6 +62,7 @@ payload = app.dashboard("alice")
 
 The dashboard payload contains:
 
+- `schema_version`: the application contract version;
 - `user`: explicit profile data for the selected user;
 - `today`: the currently selected mission, work-session progress, and an explanation of why it was selected;
 - `radar`: the ranked mission list;
@@ -75,9 +94,10 @@ The JSON mode is useful as a temporary integration surface while the GUI is bein
 
 The application client should remain presentation-focused:
 
-1. onboarding calls `onboard()` with explicit user inputs;
-2. the home screen renders `dashboard()`;
-3. completing a step calls `complete_step()`;
-4. the UI renders the returned explanation rather than inventing its own ranking rationale.
+1. app launch calls `bootstrap()`;
+2. onboarding calls `onboard()` with explicit user inputs;
+3. the home screen renders `dashboard()`;
+4. completing a step calls `complete_step()`;
+5. the UI renders the returned explanation rather than inventing its own ranking rationale.
 
 This keeps one source of truth for personalization across CLI, tests, and future GUI clients.

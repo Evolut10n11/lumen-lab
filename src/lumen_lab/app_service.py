@@ -18,6 +18,8 @@ from .work_session import (
 )
 from .workspace import UserWorkspace
 
+APP_SCHEMA_VERSION = 1
+
 
 def _matched_priorities(mission: Mission, profile: Profile) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
@@ -89,6 +91,37 @@ class LumenApplication:
         initialize_workspace(workspace, profile, replace=replace)
         return self.dashboard(workspace.user_id)
 
+    def _users(self) -> list[dict[str, str]]:
+        users_root = self.root / ".lumen" / "users"
+        if not users_root.is_dir():
+            return []
+
+        users: list[dict[str, str]] = []
+        for directory in sorted(users_root.iterdir(), key=lambda item: item.name.casefold()):
+            profile_path = directory / "profile.json"
+            if not directory.is_dir() or not profile_path.is_file():
+                continue
+            profile = load_profile(profile_path)
+            users.append({"id": profile.id, "display_name": profile.display_name})
+        return users
+
+    def bootstrap(
+        self,
+        user_id: str | None = None,
+        *,
+        top: int = 3,
+    ) -> dict[str, Any]:
+        """Return everything a GUI needs to choose onboarding or the main dashboard."""
+        workspace = UserWorkspace.from_root(self.root, user_id)
+        initialized = workspace.initialized()
+        return {
+            "schema_version": APP_SCHEMA_VERSION,
+            "selected_user_id": workspace.user_id,
+            "initialized": initialized,
+            "users": self._users(),
+            "dashboard": self.dashboard(workspace.user_id, top=top) if initialized else None,
+        }
+
     def workspace(self, user_id: str | None = None) -> UserWorkspace:
         workspace = UserWorkspace.from_root(self.root, user_id)
         workspace.require_initialized()
@@ -121,6 +154,7 @@ class LumenApplication:
                 total_steps += len(template.steps)
 
         return {
+            "schema_version": APP_SCHEMA_VERSION,
             "user": profile_payload(profile),
             "today": today,
             "radar": radar,
