@@ -98,8 +98,14 @@ def starter_missions(profile: Profile) -> list[Mission]:
     specs: list[tuple[str, str, str, tuple[str, ...], int, int, int, int, int, int]] = [
         (
             f"Move {primary} forward",
-            f"You ranked {primary} at {weight}/10, so it should receive a concrete outcome before lower-priority work.",
-            f"Define one measurable result for {primary} that can be completed or validated within seven days.",
+            (
+                f"You ranked {primary} at {weight}/10, so it should receive a concrete "
+                "outcome before lower-priority work."
+            ),
+            (
+                f"Define one measurable result for {primary} that can be completed or "
+                "validated within seven days."
+            ),
             (primary,),
             max(6, weight),
             max(5, weight),
@@ -114,9 +120,20 @@ def starter_missions(profile: Profile) -> list[Mission]:
         specs.append(
             (
                 f"Connect {interest} to {primary}",
-                f"{interest} is an explicit interest and {primary} is your highest-weighted priority; connecting them can create motivation and useful evidence at the same time.",
-                f"Choose one small {interest} experiment that produces evidence for {primary}.",
-                (primary, interest) if normalized_label(primary) != normalized_label(interest) else (primary,),
+                (
+                    f"{interest} is an explicit interest and {primary} is your "
+                    "highest-weighted priority; connecting them can create motivation "
+                    "and useful evidence at the same time."
+                ),
+                (
+                    f"Choose one small {interest} experiment that produces evidence "
+                    f"for {primary}."
+                ),
+                (
+                    (primary, interest)
+                    if normalized_label(primary) != normalized_label(interest)
+                    else (primary,)
+                ),
                 max(6, weight - 1),
                 max(5, weight - 1),
                 7,
@@ -129,8 +146,15 @@ def starter_missions(profile: Profile) -> list[Mission]:
         specs.append(
             (
                 f"Create visible evidence for {primary}",
-                f"Your profile makes {primary} the current leading priority, but progress becomes more useful when it leaves a concrete artifact or measurable result.",
-                f"Pick the smallest visible artifact that would prove progress on {primary} and define its acceptance criteria.",
+                (
+                    f"Your profile makes {primary} the current leading priority, but "
+                    "progress becomes more useful when it leaves a concrete artifact "
+                    "or measurable result."
+                ),
+                (
+                    "Pick the smallest visible artifact that would prove progress on "
+                    f"{primary} and define its acceptance criteria."
+                ),
                 (primary,),
                 max(6, weight - 1),
                 max(5, weight - 1),
@@ -145,9 +169,20 @@ def starter_missions(profile: Profile) -> list[Mission]:
         specs.append(
             (
                 f"Use {skill} to accelerate {primary}",
-                f"{skill} is already in your skill set, so using it against {primary} should reduce ramp-up cost and turn existing capability into leverage.",
-                f"Identify one task for {primary} where {skill} removes the most uncertainty, then complete the first bounded slice.",
-                (primary, skill) if normalized_label(primary) != normalized_label(skill) else (primary,),
+                (
+                    f"{skill} is already in your skill set, so using it against "
+                    f"{primary} should reduce ramp-up cost and turn existing capability "
+                    "into leverage."
+                ),
+                (
+                    f"Identify one task for {primary} where {skill} removes the most "
+                    "uncertainty, then complete the first bounded slice."
+                ),
+                (
+                    (primary, skill)
+                    if normalized_label(primary) != normalized_label(skill)
+                    else (primary,)
+                ),
                 max(6, weight - 1),
                 max(4, weight - 2),
                 9,
@@ -161,8 +196,15 @@ def starter_missions(profile: Profile) -> list[Mission]:
         specs.append(
             (
                 f"Balance {primary} with {secondary}",
-                f"{primary} leads your profile, while {secondary} is also explicitly important at {secondary_weight}/10; this mission tests a useful overlap instead of treating them as separate queues.",
-                f"Find one outcome that advances both {primary} and {secondary}, then define the smallest first step.",
+                (
+                    f"{primary} leads your profile, while {secondary} is also explicitly "
+                    f"important at {secondary_weight}/10; this mission tests a useful "
+                    "overlap instead of treating them as separate queues."
+                ),
+                (
+                    f"Find one outcome that advances both {primary} and {secondary}, "
+                    "then define the smallest first step."
+                ),
                 (primary, secondary),
                 max(6, weight - 1),
                 max(4, secondary_weight),
@@ -176,7 +218,10 @@ def starter_missions(profile: Profile) -> list[Mission]:
         specs.append(
             (
                 f"Build a repeatable loop for {primary}",
-                f"{primary} is your dominant explicit priority; a lightweight review loop prevents progress from depending on one-off motivation.",
+                (
+                    f"{primary} is your dominant explicit priority; a lightweight review "
+                    "loop prevents progress from depending on one-off motivation."
+                ),
                 f"Define a weekly signal for {primary}, its target, and the next review point.",
                 (primary,),
                 max(6, weight - 1),
@@ -214,7 +259,11 @@ def starter_work_sessions(
     profile: Profile,
     missions: list[Mission],
 ) -> list[WorkSessionTemplate]:
-    constraints = ", ".join(profile.constraints[:2]) if profile.constraints else "your current constraints"
+    constraints = (
+        ", ".join(profile.constraints[:2])
+        if profile.constraints
+        else "your current constraints"
+    )
     sessions: list[WorkSessionTemplate] = []
     for mission in missions:
         template = WorkSessionTemplate(
@@ -222,13 +271,23 @@ def starter_work_sessions(
             focus_minutes=60,
             steps=(
                 f"Rewrite the target for '{mission.title}' as one measurable outcome.",
-                f"List the current evidence, assumptions, and the most relevant constraint ({constraints}).",
-                f"Choose the smallest action that tests the biggest uncertainty: {mission.next_action}",
-                "Spend one focused block completing that action; do not expand scope during the block.",
+                (
+                    "List the current evidence, assumptions, and the most relevant "
+                    f"constraint ({constraints})."
+                ),
+                (
+                    "Choose the smallest action that tests the biggest uncertainty: "
+                    f"{mission.next_action}"
+                ),
+                (
+                    "Spend one focused block completing that action; do not expand scope "
+                    "during the block."
+                ),
                 "Record what changed, what you learned, and the single best next action.",
             ),
             definition_of_done=(
-                f"A concrete result for '{mission.title}' is recorded together with evidence and one next decision."
+                f"A concrete result for '{mission.title}' is recorded together with "
+                "evidence and one next decision."
             ),
         )
         template.validate()
@@ -244,7 +303,8 @@ def initialize_workspace(
 ) -> tuple[list[Mission], list[WorkSessionTemplate]]:
     if workspace.initialized() and not replace:
         raise ValueError(
-            f"user workspace '{workspace.user_id}' already exists; pass --replace to rebuild it explicitly"
+            f"user workspace '{workspace.user_id}' already exists; pass --replace to "
+            "rebuild it explicitly"
         )
     if profile.id != workspace.user_id:
         raise ValueError("profile id must match workspace user id")
