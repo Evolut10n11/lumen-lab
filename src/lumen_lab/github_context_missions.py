@@ -59,7 +59,7 @@ def github_context_mission(profile: Profile, snapshot: dict[str, Any]) -> Missio
     priority_name, priority_weight = priority
     project_name = active_project.rsplit("/", 1)[-1]
     digest = hashlib.sha256(
-        f"{profile.id}:github:{active_project.casefold()}".encode("utf-8")
+        f"{profile.id}:github:{active_project.casefold()}".encode()
     ).hexdigest()[:10]
     language_note = f" Its primary language is {primary_language}." if primary_language else ""
 
