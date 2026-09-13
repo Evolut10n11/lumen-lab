@@ -40,7 +40,10 @@ def _priority_map(items: list[tuple[str, int]]) -> dict[str, int]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lumen-user",
-        description="Create and inspect isolated local user profiles for personalized Lumen behavior.",
+        description=(
+            "Create and inspect isolated local user profiles for personalized "
+            "Lumen behavior."
+        ),
     )
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument(
@@ -49,7 +52,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    init = subparsers.add_parser("init", help="Create personalized local state from explicit inputs.")
+    init = subparsers.add_parser(
+        "init",
+        help="Create personalized local state from explicit inputs.",
+    )
     init.add_argument("--name", required=True, help="Display name for this local profile.")
     init.add_argument(
         "--priority",
