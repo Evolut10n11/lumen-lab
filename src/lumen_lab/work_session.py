@@ -89,8 +89,14 @@ def load_progress(path: Path = DEFAULT_PROGRESS_PATH) -> dict[str, list[int]]:
             raise ValueError("work progress mission IDs must be non-empty strings")
         if not isinstance(completed, list):
             raise ValueError(f"work progress for {mission_id} must be a JSON list")
-        if any(isinstance(item, bool) or not isinstance(item, int) or item < 1 for item in completed):
-            raise ValueError(f"work progress for {mission_id} must contain positive step numbers")
+        invalid_item = any(
+            isinstance(item, bool) or not isinstance(item, int) or item < 1
+            for item in completed
+        )
+        if invalid_item:
+            raise ValueError(
+                f"work progress for {mission_id} must contain positive step numbers"
+            )
         if len(set(completed)) != len(completed):
             raise ValueError(f"work progress for {mission_id} contains duplicate step numbers")
         progress[mission_id] = sorted(completed)
@@ -126,7 +132,9 @@ def validate_progress_for_template(
     invalid = [number for number in completed if number > step_count]
     if invalid:
         joined = ", ".join(str(number) for number in invalid)
-        raise ValueError(f"progress contains invalid step numbers for {template.mission_id}: {joined}")
+        raise ValueError(
+            f"progress contains invalid step numbers for {template.mission_id}: {joined}"
+        )
 
 
 def mark_step_done(
