@@ -17,7 +17,10 @@ def _seed_experiments() -> list[Experiment]:
         Experiment(
             id="exp-001",
             title="GitHub Issues bridge",
-            hypothesis="Mirroring the internal backlog to GitHub Issues will make autonomous work visible and steerable.",
+            hypothesis=(
+                "Mirroring the internal backlog to GitHub Issues will make autonomous "
+                "work visible and steerable."
+            ),
             impact=8,
             learning=7,
             feasibility=8,
@@ -27,7 +30,10 @@ def _seed_experiments() -> list[Experiment]:
         Experiment(
             id="exp-002",
             title="Optional LLM planner adapter",
-            hypothesis="A provider-neutral LLM adapter can improve idea generation without making secrets mandatory.",
+            hypothesis=(
+                "A provider-neutral LLM adapter can improve idea generation without "
+                "making secrets mandatory."
+            ),
             impact=9,
             learning=9,
             feasibility=5,
@@ -37,7 +43,10 @@ def _seed_experiments() -> list[Experiment]:
         Experiment(
             id="exp-003",
             title="Experiment benchmark ledger",
-            hypothesis="Tracking expected versus observed outcomes will improve future prioritization decisions.",
+            hypothesis=(
+                "Tracking expected versus observed outcomes will improve future "
+                "prioritization decisions."
+            ),
             impact=8,
             learning=9,
             feasibility=9,
@@ -47,7 +56,10 @@ def _seed_experiments() -> list[Experiment]:
         Experiment(
             id="exp-004",
             title="Isolated experiment sandbox",
-            hypothesis="A constrained subprocess sandbox will let experiments execute while keeping side effects explicit.",
+            hypothesis=(
+                "A constrained subprocess sandbox will let experiments execute while "
+                "keeping side effects explicit."
+            ),
             impact=9,
             learning=8,
             feasibility=6,
@@ -77,7 +89,11 @@ def cmd_status(_: argparse.Namespace) -> int:
         return 0
     print("ID       SCORE  STATUS    TITLE")
     print("-------- ------ --------- ----------------------------------------")
-    for item in sorted(experiments, key=lambda value: (value.status, -value.score(), value.id)):
+    ordered = sorted(
+        experiments,
+        key=lambda value: (value.status, -value.score(), value.id),
+    )
+    for item in ordered:
         print(f"{item.id:<8} {item.score():>6.2f} {item.status:<9} {item.title}")
     return 0
 
@@ -98,11 +114,11 @@ def cmd_next(_: argparse.Namespace) -> int:
 
     selected.status = "active"
     store.save(experiments)
-    store.append_journal(
-        "Experiment activated",
-        f"Selected **{selected.id} — {selected.title}** with priority score {selected.score():.2f}.\n\n"
-        f"Hypothesis: {selected.hypothesis}",
+    activation = (
+        f"Selected **{selected.id} — {selected.title}** with priority score "
+        f"{selected.score():.2f}.\n\nHypothesis: {selected.hypothesis}"
     )
+    store.append_journal("Experiment activated", activation)
     print(f"Activated: {selected.id} — {selected.title} (score {selected.score():.2f})")
     return 0
 
@@ -116,7 +132,8 @@ def cmd_complete(args: argparse.Namespace) -> int:
     selected.status = "done"
     store.save(experiments)
     result = args.result.strip() or "Completed without an additional result note."
-    store.append_journal("Experiment completed", f"**{selected.id} — {selected.title}**\n\n{result}")
+    entry = f"**{selected.id} — {selected.title}**\n\n{result}"
+    store.append_journal("Experiment completed", entry)
     print(f"Completed: {selected.id} — {selected.title}")
     return 0
 
@@ -130,7 +147,11 @@ def cmd_journal(args: argparse.Namespace) -> int:
 def cmd_pulse(_: argparse.Namespace) -> int:
     store = _store()
     experiments = store.load()
-    counts = {status: sum(item.status == status for item in experiments) for status in ("backlog", "active", "done", "dropped")}
+    statuses = ("backlog", "active", "done", "dropped")
+    counts = {
+        status: sum(item.status == status for item in experiments)
+        for status in statuses
+    }
     ordered = ranked(experiments)
     lines = [
         "# Lumen Pulse",
@@ -146,17 +167,24 @@ def cmd_pulse(_: argparse.Namespace) -> int:
         "",
     ]
     if ordered:
-        lines.extend(f"- `{item.id}` — {item.title} — score `{item.score():.2f}`" for item in ordered)
+        lines.extend(
+            f"- `{item.id}` — {item.title} — score `{item.score():.2f}`"
+            for item in ordered
+        )
     else:
         lines.append("No pending experiments.")
     store.state_dir.mkdir(parents=True, exist_ok=True)
-    (store.state_dir / "PULSE.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    pulse_path = store.state_dir / "PULSE.md"
+    pulse_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("Pulse written to state/PULSE.md")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="lumen", description="Operate the Lumen Lab experiment loop.")
+    parser = argparse.ArgumentParser(
+        prog="lumen",
+        description="Operate the Lumen Lab experiment loop.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     seed = subparsers.add_parser("seed", help="Create the initial experiment backlog.")
