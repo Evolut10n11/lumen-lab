@@ -9,6 +9,7 @@ from .ledger import Outcome
 from .models import Experiment
 from .provenance import load_provenance, validate_provenance
 from .replenishment import load_candidate_registry
+from .state_schema import validate_state_schema
 from .synthesis import render_synthesis
 
 
@@ -71,6 +72,18 @@ def run_doctor(root: Path) -> DoctorReport:
     experiments: list[Experiment] | None = None
     outcomes: list[Outcome] | None = None
     baseline: FrozenCalibrationBaseline | None = None
+
+    try:
+        manifest = validate_state_schema(root)
+        checks.append(
+            CheckResult(
+                "state-schema",
+                True,
+                f"manifest version {manifest.manifest_version}; {len(manifest.files)} managed files",
+            )
+        )
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        checks.append(CheckResult("state-schema", False, str(exc)))
 
     try:
         experiments = _load_experiments(state / "backlog.json")
