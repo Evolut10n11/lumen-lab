@@ -165,3 +165,13 @@ Implemented an explicit local profile layer so personalization no longer depends
 Expected score: 8.75. Observed score: 9.30. Calibration error: 0.55. Seventeen-outcome calibration MAE: 0.80.
 
 Against the frozen `+0.94` baseline, `exp-018` is the seventh forward holdout: raw error 0.55 becomes 0.39. Across seven holdouts the raw MAE is 0.61 and corrected MAE is 0.33, a 45.18% improvement without refitting. The baseline remains frozen. The internal backlog still contains `exp-014` state schema versioning, while the next product step should generate reviewable candidate ideas from the explicit profile plus repository evidence without granting proposal generation any execution authority.
+
+## 2026-09-13 — exp-019 completed
+
+Implemented review-gated profile-driven proposal generation. `lumen-propose` now turns the explicit local profile plus repository-owned mission and experiment evidence into a strict proposal batch. The deterministic path is the default; profile policy can disable generation or allow optional OpenAI-compatible enrichment, but model output is constrained by the same proposal schema, evidence references, duplicate guards, risk tolerance, and candidate limit.
+
+Preview performs no state mutation. A proposal can be written only to an explicit review snapshot, and backlog mutation is a separate acceptance step requiring that snapshot, a selected proposal ID, and a new experiment ID. Acceptance revalidates the current profile, missions, evidence, risk, duplicates, and normal `Experiment` schema. There is intentionally no path where a fresh model response can generate and accept itself in one operation, and proposals have no command/tool/external execution authority.
+
+Expected score: 8.70. Observed score: 9.30. Calibration error: 0.60. Eighteen-outcome calibration MAE: 0.79.
+
+Against the frozen `+0.94` baseline, `exp-019` is the eighth forward holdout: raw error 0.60 becomes 0.34. Across eight holdouts the raw MAE is 0.61 and corrected MAE is 0.33, a 44.95% improvement without refitting. The baseline remains frozen. The remaining internal backlog is `exp-014` state schema versioning; the product-facing Profile → Mission → Proposal pipeline is now stable enough for the dedicated README/documentation pass.
