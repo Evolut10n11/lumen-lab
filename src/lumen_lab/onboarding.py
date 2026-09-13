@@ -35,6 +35,13 @@ def _clean_answer(value: str, name: str, *, required: bool = True) -> str:
     return cleaned
 
 
+def _validated_focus_minutes(value: int) -> int:
+    if isinstance(value, bool) or value not in ALLOWED_FOCUS_MINUTES:
+        allowed = ", ".join(str(item) for item in ALLOWED_FOCUS_MINUTES)
+        raise ValueError(f"focus_minutes must be one of: {allowed}")
+    return value
+
+
 def goal_label(value: str) -> str:
     """Turn a normal first-person answer into a concise goal label when possible."""
     cleaned = _clean_answer(value, "desired_change")
@@ -57,9 +64,7 @@ def guided_profile_inputs(
     context = _clean_answer(current_context, "current_context")
     change = _clean_answer(desired_change, "desired_change")
     blocker = _clean_answer(friction, "friction", required=False)
-    if isinstance(focus_minutes, bool) or focus_minutes not in ALLOWED_FOCUS_MINUTES:
-        allowed = ", ".join(str(value) for value in ALLOWED_FOCUS_MINUTES)
-        raise ValueError(f"focus_minutes must be one of: {allowed}")
+    focus_minutes = _validated_focus_minutes(focus_minutes)
 
     primary_goal = goal_label(change)
     interests: tuple[str, ...] = ()
@@ -159,3 +164,19 @@ def load_onboarding_context(path: Path) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         raise ValueError("onboarding context must contain a JSON object")
     return raw
+
+
+def apply_focus_minutes(path: Path, focus_minutes: int) -> None:
+    """Tune generated work sessions to the focus window chosen in first-run setup."""
+    focus_minutes = _validated_focus_minutes(focus_minutes)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise ValueError("work sessions state must contain a JSON list")
+    for item in raw:
+        if not isinstance(item, dict):
+            raise ValueError("work session entries must be JSON objects")
+        item["focus_minutes"] = focus_minutes
+    path.write_text(
+        json.dumps(raw, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
