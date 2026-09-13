@@ -11,6 +11,7 @@ from .context_learning import (
     clarification_for_context,
     observe_context_signal,
 )
+from .context_revision import revise_user_direction
 from .feedback import load_feedback, record_feedback
 from .github_context_missions import (
     clear_github_context_missions,
@@ -198,6 +199,34 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             replace=bool(payload.get("replace", False)),
         )
         return _dashboard_with_context(app, user_id)
+
+    if action == "revise_direction":
+        desired_change = payload.get("desired_change")
+        current_context = payload.get("current_context")
+        friction = payload.get("friction")
+        focus_minutes = payload.get("focus_minutes")
+        if not isinstance(desired_change, str):
+            raise ValueError("desired_change must be a string")
+        if current_context is not None and not isinstance(current_context, str):
+            raise ValueError("current_context must be a string or null")
+        if friction is not None and not isinstance(friction, str):
+            raise ValueError("friction must be a string or null")
+        if focus_minutes is not None and (
+            isinstance(focus_minutes, bool) or not isinstance(focus_minutes, int)
+        ):
+            raise ValueError("focus_minutes must be an integer or null")
+
+        workspace = app.workspace(user_id)
+        revision = revise_user_direction(
+            workspace,
+            desired_change=desired_change,
+            current_context=current_context,
+            friction=friction,
+            focus_minutes=focus_minutes,
+        )
+        dashboard = _dashboard_with_context(app, user_id)
+        dashboard["revision"] = revision
+        return dashboard
 
     if action == "github_preview":
         app.workspace(user_id)
