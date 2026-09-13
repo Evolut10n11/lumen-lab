@@ -1,0 +1,29 @@
+name: Branch hygiene
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/branch-hygiene.yml"
+      - "src/lumen_lab/branch_hygiene.py"
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Remove merged and explicitly superseded branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: PYTHONPATH=src python -m lumen_lab.branch_hygiene --apply
