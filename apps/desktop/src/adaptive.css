@@ -1,0 +1,54 @@
+.clarification-card {
+  margin-top: 18px;
+  padding: 20px 22px;
+  border: 1px solid rgba(215, 255, 104, .18);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(215,255,104,.07), rgba(255,255,255,.018));
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.clarification-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  border: 1px solid rgba(215,255,104,.18);
+  background: rgba(215,255,104,.06);
+}
+
+.clarification-copy h3 {
+  max-width: 760px;
+  margin: 7px 0 6px;
+  font-size: 17px;
+  line-height: 1.4;
+  letter-spacing: -.02em;
+  font-weight: 590;
+}
+
+.clarification-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.clarification-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+@media (max-width: 700px) {
+  .clarification-card {
+    grid-template-columns: 1fr;
+  }
+
+  .clarification-actions {
+    display: grid;
+  }
+}
