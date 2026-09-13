@@ -46,3 +46,13 @@ Expected score: 8.20. Observed score: 9.00. Calibration error: 0.80. Five-outcom
 
 The lab now has enough completed outcomes to satisfy the minimum evidence threshold for a calibration review, but the weights were intentionally not changed inside the same experiment that crossed the threshold. Replenishment produced three second-generation candidates: `exp-006` planner calibration checkpoint, `exp-007` sandbox capability manifests, and `exp-008` journal synthesis snapshot. Deterministic ranking makes `exp-006` the next candidate with score 7.85.
 
+## 2026-09-13 — exp-006 completed
+
+Implemented a deterministic planner calibration checkpoint that reports residuals as observed minus expected score, sample size, MAE, mean signed residual, and directional counts. Added explicit classifications for insufficient evidence, systematic underprediction, systematic overprediction, and mixed residuals, plus the `lumen-calibrate` command, tests, and calibration policy documentation.
+
+Before recording this experiment, the first five outcomes had MAE 1.23 and mean signed residual +1.23: all 5/5 observed scores exceeded their predictions. The checkpoint classifies this as systematic underprediction, but treats the uniform direction as evidence of a possible global offset or scale mismatch rather than evidence that the relative impact, learning, feasibility, novelty, or risk weights are wrong. Action: hold weights and collect more varied evidence.
+
+Expected score: 7.85. Observed score: 8.60. Calibration error: 0.75. Six-outcome calibration MAE: 1.15.
+
+No planner coefficient was changed. The highest remaining backlog item is now `exp-008` journal synthesis snapshot with score 7.60, ahead of `exp-007` sandbox capability manifests at 6.95.
+
