@@ -52,6 +52,65 @@ export type ContextClarification = {
   }>;
 };
 
+export type GitHubRepositoryContext = {
+  name: string;
+  full_name: string;
+  owner: string;
+  description: string | null;
+  language: string | null;
+  topics: string[];
+  fork: boolean;
+  archived: boolean;
+  stars: number;
+  pushed_at: string | null;
+  updated_at: string | null;
+  event_count: number;
+};
+
+export type GitHubContextSnapshot = {
+  schema_version: number;
+  source: "github_public";
+  fetched_at: string;
+  account: {
+    username: string;
+    name: string | null;
+    bio: string | null;
+    company: string | null;
+    location: string | null;
+    public_repos: number;
+    followers: number;
+  };
+  active_repositories: GitHubRepositoryContext[];
+  activity_only_repositories: Array<{
+    full_name: string;
+    event_count: number;
+  }>;
+  languages: Array<{
+    name: string;
+    repository_count: number;
+  }>;
+  topics: Array<{
+    name: string;
+    repository_count: number;
+  }>;
+  signals: {
+    active_project: string | null;
+    primary_language: string | null;
+    active_repository_count: number;
+    public_event_repository_count: number;
+  };
+};
+
+export type GitHubIntegration = {
+  connected: boolean;
+  source: "github_public";
+  account: GitHubContextSnapshot["account"] | null;
+  fetched_at: string | null;
+  active_repositories: GitHubRepositoryContext[];
+  languages: GitHubContextSnapshot["languages"];
+  signals: GitHubContextSnapshot["signals"] | Record<string, never>;
+};
+
 export type Dashboard = {
   schema_version: number;
   user: {
@@ -61,6 +120,9 @@ export type Dashboard = {
   };
   context?: UserContext | null;
   clarification?: ContextClarification | null;
+  integrations?: {
+    github: GitHubIntegration;
+  };
   experience: {
     headline: string;
     message: string;
@@ -121,6 +183,9 @@ export type Bootstrap = {
     submit_label: string;
   };
   context?: UserContext | null;
+  integrations?: {
+    github: GitHubIntegration;
+  };
   dashboard: Dashboard | null;
 };
 
@@ -199,6 +264,25 @@ export function answerClarification(
     clarification_id: clarificationId,
     choice,
   });
+}
+
+export function previewGitHub(
+  userId: string,
+  username: string,
+): Promise<GitHubContextSnapshot> {
+  return request<GitHubContextSnapshot>("github_preview", userId, { username });
+}
+
+export function connectGitHub(userId: string, username: string): Promise<Dashboard> {
+  return request<Dashboard>("github_connect", userId, { username });
+}
+
+export function refreshGitHub(userId: string): Promise<Dashboard> {
+  return request<Dashboard>("github_refresh", userId);
+}
+
+export function disconnectGitHub(userId: string): Promise<Dashboard> {
+  return request<Dashboard>("github_disconnect", userId);
 }
 
 export async function completeStep(
