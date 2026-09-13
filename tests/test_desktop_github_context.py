@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from lumen_lab.desktop_bridge import dispatch
+from lumen_lab.github_context_missions import GITHUB_CONTEXT_MISSION_PREFIX
 from lumen_lab.github_user_context import build_github_snapshot
 
 
@@ -90,9 +91,12 @@ def test_connect_refresh_and_disconnect_github_context(
     assert connected["integrations"]["github"]["account"]["username"] == "alice-dev"
     assert "github_active_project" in context_keys
     assert "github_primary_language" in context_keys
+    assert connected["today"]["mission_id"].startswith(GITHUB_CONTEXT_MISSION_PREFIX)
+    assert connected["today"]["title"] == "Use agent-kit to move Ship a stronger portfolio forward"
 
     refreshed = request("github_refresh")
     assert refreshed["integrations"]["github"]["connected"] is True
+    assert refreshed["today"]["mission_id"].startswith(GITHUB_CONTEXT_MISSION_PREFIX)
 
     disconnected = request("github_disconnect")
     context_keys = {item["key"] for item in disconnected["context"]["hypotheses"]}
@@ -100,3 +104,4 @@ def test_connect_refresh_and_disconnect_github_context(
     assert disconnected["integrations"]["github"]["connected"] is False
     assert "github_active_project" not in context_keys
     assert "github_primary_language" not in context_keys
+    assert not disconnected["today"]["mission_id"].startswith(GITHUB_CONTEXT_MISSION_PREFIX)
