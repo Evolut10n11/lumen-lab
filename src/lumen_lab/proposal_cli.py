@@ -41,7 +41,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="LUMEN_LLM_TOKEN",
         help="Environment variable containing an optional bearer token.",
     )
-    parser.add_argument("--accept-file", type=Path, help="Reviewed proposal snapshot to accept from.")
+    parser.add_argument(
+        "--accept-file",
+        type=Path,
+        help="Reviewed proposal snapshot to accept from.",
+    )
     parser.add_argument("--accept", help="Proposal ID to accept from --accept-file.")
     parser.add_argument("--experiment-id", help="New normal backlog experiment ID for acceptance.")
     return parser
@@ -128,7 +132,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{index}. {proposal.title} [{proposal.id}] ({proposal.source})")
             print(
                 f"   score inputs: impact={proposal.impact} learning={proposal.learning} "
-                f"feasibility={proposal.feasibility} novelty={proposal.novelty} risk={proposal.risk}"
+                f"feasibility={proposal.feasibility} novelty={proposal.novelty} "
+                f"risk={proposal.risk}"
             )
             print(f"   rationale: {proposal.rationale}")
             print(f"   evidence: {', '.join(proposal.evidence)}")
