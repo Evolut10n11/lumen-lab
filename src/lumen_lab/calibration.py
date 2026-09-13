@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from .ledger import Outcome, mean_absolute_calibration_error
@@ -35,9 +33,7 @@ def analyze_calibration(outcomes: list[Outcome]) -> CalibrationCheckpoint:
     overpredicted = sum(value < -RESIDUAL_TOLERANCE for value in residuals)
     exact = sample_size - underpredicted - overpredicted
     mae = mean_absolute_calibration_error(outcomes)
-    mean_signed_error = (
-        round(sum(residuals) / sample_size, 2) if sample_size else None
-    )
+    mean_signed_error = round(sum(residuals) / sample_size, 2) if sample_size else None
 
     if sample_size < MIN_CALIBRATION_SAMPLES:
         return CalibrationCheckpoint(
