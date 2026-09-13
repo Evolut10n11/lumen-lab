@@ -143,6 +143,17 @@
     "status": "done"
   },
   {
+    "id": "exp-017",
+    "title": "Elaine focused work sessions",
+    "hypothesis": "A deterministic focused session with ordered steps, local progress, and a Definition of Done can turn Mission Radar recommendations into practical work without adding autonomous external execution.",
+    "impact": 9,
+    "learning": 9,
+    "feasibility": 9,
+    "novelty": 7,
+    "risk": 1,
+    "status": "done"
+  },
+  {
     "id": "exp-013",
     "title": "State integrity doctor",
     "hypothesis": "A deterministic cross-file integrity check can catch drift between backlog, outcomes, calibration baselines, and generated snapshots before autonomous work builds on inconsistent state.",
