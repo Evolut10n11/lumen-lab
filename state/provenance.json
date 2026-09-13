@@ -1,0 +1,62 @@
+[
+  {
+    "experiment_id": "exp-001",
+    "artifacts": ["src/lumen_lab/github_bridge.py", "docs/github-issues-bridge.md"]
+  },
+  {
+    "experiment_id": "exp-002",
+    "artifacts": ["src/lumen_lab/llm_planner.py", "docs/llm-planner.md"]
+  },
+  {
+    "experiment_id": "exp-003",
+    "artifacts": ["src/lumen_lab/ledger.py", "tests/test_ledger.py"]
+  },
+  {
+    "experiment_id": "exp-004",
+    "artifacts": ["src/lumen_lab/sandbox.py", "docs/sandbox.md"]
+  },
+  {
+    "experiment_id": "exp-005",
+    "artifacts": ["src/lumen_lab/replenishment.py", "docs/replenishment.md"]
+  },
+  {
+    "experiment_id": "exp-006",
+    "artifacts": ["src/lumen_lab/calibration.py", "docs/calibration.md"]
+  },
+  {
+    "experiment_id": "exp-007",
+    "artifacts": ["src/lumen_lab/capabilities.py", "docs/capabilities.md"]
+  },
+  {
+    "experiment_id": "exp-008",
+    "artifacts": ["src/lumen_lab/synthesis.py", "docs/synthesis.md"]
+  },
+  {
+    "experiment_id": "exp-009",
+    "artifacts": ["src/lumen_lab/ranking.py", "docs/ranking.md"]
+  },
+  {
+    "experiment_id": "exp-010",
+    "artifacts": ["src/lumen_lab/intercept.py", "docs/intercept_calibration.md"]
+  },
+  {
+    "experiment_id": "exp-011",
+    "artifacts": ["src/lumen_lab/holdout.py", "docs/frozen_calibration_holdout.md"]
+  },
+  {
+    "experiment_id": "exp-012",
+    "artifacts": ["state/candidates.json", "docs/candidate_registry.md"]
+  },
+  {
+    "experiment_id": "exp-013",
+    "artifacts": ["src/lumen_lab/doctor.py", "docs/state-doctor.md"]
+  },
+  {
+    "experiment_id": "exp-016",
+    "artifacts": ["src/lumen_lab/mission_radar.py", "docs/mission-radar.md"]
+  },
+  {
+    "experiment_id": "exp-017",
+    "artifacts": ["src/lumen_lab/work_session.py", "docs/work-sessions.md"]
+  }
+]
