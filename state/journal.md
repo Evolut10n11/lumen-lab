@@ -145,3 +145,13 @@ The test suite covers healthy state without writes, duplicate IDs, orphan and no
 Expected score: 7.85. Observed score: 8.60. Calibration error: 0.75. Fifteen-outcome calibration MAE: 0.83.
 
 Against the frozen `+0.94` baseline, `exp-013` is the fifth forward holdout: raw error 0.75 becomes 0.19. Across five holdouts the raw MAE is 0.60 and corrected MAE is 0.34, a 43.33% improvement without refitting. The baseline remains frozen. The remaining deterministic backlog is `exp-015` followed by `exp-014`, but product work should now generalize the user-facing mission layer instead of hard-coding one person or persona.
+
+## 2026-09-13 — exp-015 completed
+
+Implemented a deterministic local provenance index for completed experiments. `state/provenance.json` now links each completed experiment to a compact set of primary repository artifacts, while `lumen-provenance` validates those links and renders the explicit artifacts together with the recorded outcome and journal-section presence. `lumen-doctor` now includes the same provenance health check.
+
+The implementation rejects duplicate experiment records and artifact paths, unsafe absolute or parent-traversal paths, non-completed experiment references, missing outcomes, incomplete completed-experiment coverage, and missing artifact files. It remains read-only and does not depend on Git history, GitHub, a model, secrets, implicit conversation context, or automatic repair. The first CI attempt exposed one incorrect historical artifact path for `exp-006`; the registry was corrected to point at the actual calibration CLI module, after which CI passed on Python 3.11, 3.12, and 3.13.
+
+Expected score: 7.60. Observed score: 8.30. Calibration error: 0.70. Sixteen-outcome calibration MAE: 0.82.
+
+Against the frozen `+0.94` baseline, `exp-015` is the sixth forward holdout: raw error 0.70 becomes 0.24. Across six holdouts the raw MAE is 0.62 and corrected MAE is 0.32, a 47.57% improvement without refitting. The remaining internal backlog is now `exp-014` state schema versioning; the separately opened universal-profile experiment remains product work rather than a replacement for the internal state-safety backlog.
