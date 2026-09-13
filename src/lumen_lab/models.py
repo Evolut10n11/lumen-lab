@@ -39,7 +39,7 @@ class Experiment:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Experiment":
+    def from_dict(cls, data: dict[str, Any]) -> Experiment:
         experiment = cls(**data)
         experiment.validate()
         return experiment
