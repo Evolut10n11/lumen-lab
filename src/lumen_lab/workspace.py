@@ -54,6 +54,10 @@ class UserWorkspace:
         return self.directory / "profile.json"
 
     @property
+    def onboarding_context_path(self) -> Path:
+        return self.directory / "onboarding_context.json"
+
+    @property
     def missions_path(self) -> Path:
         return self.directory / "missions.json"
 

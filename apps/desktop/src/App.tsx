@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  ArrowLeft,
   ArrowRight,
   Check,
   ChevronRight,
@@ -8,7 +9,6 @@ import {
   Clock3,
   Home,
   Loader2,
-  Plus,
   Sparkles,
   Target,
   X,
@@ -17,44 +17,68 @@ import {
   bootstrap,
   completeStep,
   Dashboard,
-  quickOnboard,
+  guidedOnboard,
   reactToMission,
 } from "./lib/lumen";
 
 type Screen = "home" | "mission" | "activity" | "profile";
+type OnboardingStep = "name" | "context" | "change" | "friction" | "focus" | "review";
+
+const onboardingSteps: OnboardingStep[] = [
+  "name",
+  "context",
+  "change",
+  "friction",
+  "focus",
+  "review",
+];
 
 function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
+  const [stepIndex, setStepIndex] = useState(0);
   const [name, setName] = useState("");
-  const [goals, setGoals] = useState([""]);
+  const [currentContext, setCurrentContext] = useState("");
+  const [desiredChange, setDesiredChange] = useState("");
+  const [friction, setFriction] = useState("");
+  const [focusMinutes, setFocusMinutes] = useState<15 | 30 | 60>(30);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
-    name.trim().length > 0 && goals.some((goal) => goal.trim().length > 0) && !busy;
+  const step = onboardingSteps[stepIndex];
+  const progress = Math.round(((stepIndex + 1) / onboardingSteps.length) * 100);
 
-  const updateGoal = (index: number, value: string) => {
-    setGoals((current) => current.map((goal, i) => (i === index ? value : goal)));
+  const canContinue =
+    step === "name"
+      ? name.trim().length > 0
+      : step === "context"
+        ? currentContext.trim().length > 0
+        : step === "change"
+          ? desiredChange.trim().length > 0
+          : true;
+
+  const next = () => {
+    if (!canContinue || stepIndex >= onboardingSteps.length - 1) return;
+    setError(null);
+    setStepIndex((current) => current + 1);
   };
 
-  const addGoal = () => {
-    if (goals.length < 5) setGoals((current) => [...current, ""]);
-  };
-
-  const removeGoal = (index: number) => {
-    if (goals.length === 1) return;
-    setGoals((current) => current.filter((_, i) => i !== index));
+  const back = () => {
+    if (stepIndex === 0 || busy) return;
+    setError(null);
+    setStepIndex((current) => current - 1);
   };
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const dashboard = await quickOnboard(
-        "default",
-        name.trim(),
-        goals.map((goal) => goal.trim()).filter(Boolean),
-      );
+      const dashboard = await guidedOnboard("default", {
+        displayName: name.trim(),
+        currentContext: currentContext.trim(),
+        desiredChange: desiredChange.trim(),
+        friction: friction.trim(),
+        focusMinutes,
+      });
       onReady(dashboard);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start Lumen.");
@@ -63,71 +87,142 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
     }
   };
 
+  const onEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && canContinue) next();
+  };
+
   return (
     <main className="onboarding-shell">
-      <section className="onboarding-card">
-        <div className="brand-lockup">
-          <div className="brand-mark"><Sparkles size={18} /></div>
-          <span>Lumen</span>
-        </div>
-        <div className="onboarding-copy">
-          <span className="eyebrow">Set up in under a minute</span>
-          <h1>What do you want to move forward?</h1>
-          <p>
-            Give Lumen a little context now. It will learn from what you actually do instead
-            of making you tune settings forever.
-          </p>
-        </div>
-
-        <label className="field-label">
-          What should Lumen call you?
-          <input
-            autoFocus
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Your name"
-          />
-        </label>
-
-        <div className="goals-block">
-          <div className="goals-header">
-            <span>What matters most right now?</span>
-            <span className="muted">1–5 goals</span>
+      <section className="onboarding-card conversational-onboarding">
+        <div className="onboarding-topline">
+          <div className="brand-lockup">
+            <div className="brand-mark"><Sparkles size={18} /></div>
+            <span>Lumen</span>
           </div>
-          {goals.map((goal, index) => (
-            <div className="goal-row" key={index}>
-              <span className="goal-index">{index + 1}</span>
-              <input
-                value={goal}
-                onChange={(event) => updateGoal(index, event.target.value)}
-                placeholder={index === 0 ? "Build my AI career" : "Add another goal"}
-              />
-              {goals.length > 1 && (
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => removeGoal(index)}
-                  aria-label="Remove goal"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-          ))}
-          {goals.length < 5 && (
-            <button className="ghost-button add-goal" type="button" onClick={addGoal}>
-              <Plus size={16} /> Add goal
-            </button>
-          )}
+          <span className="onboarding-progress-label">A short conversation · {progress}%</span>
         </div>
+        <div className="onboarding-progress-track"><span style={{ width: `${progress}%` }} /></div>
+
+        {step === "name" && (
+          <div className="conversation-step">
+            <span className="eyebrow">First things first</span>
+            <h1>What should I call you?</h1>
+            <p>No profile setup screens. Just tell Lumen enough to make the first useful guess.</p>
+            <input
+              autoFocus
+              className="conversation-input"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={onEnter}
+              placeholder="Your name"
+            />
+          </div>
+        )}
+
+        {step === "context" && (
+          <div className="conversation-step">
+            <span className="eyebrow">Your world right now</span>
+            <h1>What is taking most of your attention these days?</h1>
+            <p>Work, study, a project, family, a move — whatever is actually occupying your head.</p>
+            <textarea
+              autoFocus
+              className="conversation-textarea"
+              value={currentContext}
+              onChange={(event) => setCurrentContext(event.target.value)}
+              placeholder="For example: I work full time, prepare for interviews and try to finish a side project..."
+            />
+          </div>
+        )}
+
+        {step === "change" && (
+          <div className="conversation-step">
+            <span className="eyebrow">Direction</span>
+            <h1>What would you most like to be different a month from now?</h1>
+            <p>Say it normally. Lumen will turn the answer into a starting direction, not a permanent setting.</p>
+            <textarea
+              autoFocus
+              className="conversation-textarea"
+              value={desiredChange}
+              onChange={(event) => setDesiredChange(event.target.value)}
+              placeholder="For example: I want to get a stronger AI role and have a project I can proudly show..."
+            />
+          </div>
+        )}
+
+        {step === "friction" && (
+          <div className="conversation-step">
+            <span className="eyebrow">What gets in the way</span>
+            <h1>What usually makes progress harder?</h1>
+            <p>This one is optional. It helps Lumen avoid giving advice that looks good but does not fit your life.</p>
+            <textarea
+              autoFocus
+              className="conversation-textarea"
+              value={friction}
+              onChange={(event) => setFriction(event.target.value)}
+              placeholder="Too little time, low energy after work, too many parallel goals..."
+            />
+          </div>
+        )}
+
+        {step === "focus" && (
+          <div className="conversation-step">
+            <span className="eyebrow">Keep it realistic</span>
+            <h1>How much focused time feels reasonable on a normal day?</h1>
+            <p>This changes the size of the work Lumen gives you. You can change it later just by using the app.</p>
+            <div className="focus-choice-grid">
+              {([15, 30, 60] as const).map((minutes) => (
+                <button
+                  key={minutes}
+                  className={focusMinutes === minutes ? "focus-choice active" : "focus-choice"}
+                  onClick={() => setFocusMinutes(minutes)}
+                >
+                  <strong>{minutes} min</strong>
+                  <span>{minutes === 15 ? "Small wins" : minutes === 30 ? "Steady progress" : "Deep focus"}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === "review" && (
+          <div className="conversation-step review-step">
+            <span className="eyebrow">A starting hypothesis</span>
+            <h1>Here is what Lumen will start with.</h1>
+            <p>
+              This is not a locked profile. Lumen will change its understanding as your choices and completed work
+              provide better evidence.
+            </p>
+            <div className="context-review">
+              <div><span>Current context</span><strong>{currentContext}</strong></div>
+              <div><span>Direction</span><strong>{desiredChange}</strong></div>
+              {friction.trim() && <div><span>Friction</span><strong>{friction}</strong></div>}
+              <div><span>Focus window</span><strong>{focusMinutes} minutes</strong></div>
+            </div>
+          </div>
+        )}
 
         {error && <div className="error-banner">{error}</div>}
 
-        <button className="primary-button onboarding-submit" disabled={!canSubmit} onClick={submit}>
-          {busy ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} />}
-          Start with Lumen
-          {!busy && <ArrowRight size={18} />}
-        </button>
+        <div className="onboarding-navigation">
+          {stepIndex > 0 ? (
+            <button className="ghost-button" type="button" onClick={back} disabled={busy}>
+              <ArrowLeft size={16} /> Back
+            </button>
+          ) : <span />}
+
+          {step === "review" ? (
+            <button className="primary-button" disabled={busy} onClick={submit}>
+              {busy ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} />}
+              Build my starting point
+              {!busy && <ArrowRight size={18} />}
+            </button>
+          ) : (
+            <button className="primary-button" disabled={!canContinue || busy} onClick={next}>
+              {step === "friction" && !friction.trim() ? "Skip" : "Continue"}
+              <ArrowRight size={18} />
+            </button>
+          )}
+        </div>
       </section>
     </main>
   );
@@ -236,8 +331,8 @@ function HomeScreen({ dashboard, setScreen, onReact }: {
           <Sparkles size={20} />
           <div>
             <span className="card-kicker">Personalization</span>
-            <h3>{dashboard.experience.learning.active ? "Lumen is adapting" : "No tuning needed"}</h3>
-            <p>{dashboard.experience.learning.message}</p>
+            <h3>{dashboard.context ? "Starting from your context" : dashboard.experience.learning.active ? "Lumen is adapting" : "No tuning needed"}</h3>
+            <p>{dashboard.context ? "These are starting assumptions. Your real choices will gradually outweigh them." : dashboard.experience.learning.message}</p>
           </div>
         </aside>
       </div>
@@ -353,6 +448,27 @@ function ProfileScreen({ dashboard }: { dashboard: Dashboard }) {
           <p>Your missions, progress and preference signals stay isolated from every other user.</p>
         </div>
       </div>
+
+      {dashboard.context && (
+        <div className="context-panel">
+          <div className="section-heading compact">
+            <div>
+              <span className="eyebrow">What Lumen understands so far</span>
+              <h2>Starting assumptions, not permanent settings</h2>
+            </div>
+          </div>
+          <div className="context-grid">
+            {dashboard.context.hypotheses.map((item) => (
+              <div className="context-item" key={item.key}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>Will be revised as Lumen sees what actually works for you.</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="learning-card profile-learning">
         <Sparkles size={20} />
         <div><span className="card-kicker">Adaptive profile</span><h3>{dashboard.personalization.signal_count} signals learned</h3><p>Use Lumen normally. Finishing work and lightweight reactions refine future ranking automatically.</p></div>

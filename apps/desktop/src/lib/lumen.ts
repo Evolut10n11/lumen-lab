@@ -12,12 +12,35 @@ export type MissionStep = {
   done: boolean;
 };
 
+export type ContextHypothesis = {
+  key: string;
+  label: string;
+  value: string;
+  confidence: number;
+  source: string;
+};
+
+export type UserContext = {
+  version: number;
+  source: "conversation";
+  answers: {
+    current_context: string;
+    desired_change: string;
+    friction: string | null;
+    focus_minutes: number;
+  };
+  hypotheses: ContextHypothesis[];
+  average_confidence: number;
+};
+
 export type Dashboard = {
   schema_version: number;
   user: {
     id: string;
     display_name: string;
+    priorities?: Record<string, number>;
   };
+  context?: UserContext | null;
   experience: {
     headline: string;
     message: string;
@@ -77,7 +100,16 @@ export type Bootstrap = {
     message: string;
     submit_label: string;
   };
+  context?: UserContext | null;
   dashboard: Dashboard | null;
+};
+
+export type GuidedOnboardingInput = {
+  displayName: string;
+  currentContext: string;
+  desiredChange: string;
+  friction: string;
+  focusMinutes: 15 | 30 | 60;
 };
 
 type BridgeResponse<T> =
@@ -101,6 +133,19 @@ async function request<T>(
 
 export function bootstrap(userId = "default"): Promise<Bootstrap> {
   return request<Bootstrap>("bootstrap", userId);
+}
+
+export function guidedOnboard(
+  userId: string,
+  input: GuidedOnboardingInput,
+): Promise<Dashboard> {
+  return request<Dashboard>("guided_onboard", userId, {
+    display_name: input.displayName,
+    current_context: input.currentContext,
+    desired_change: input.desiredChange,
+    friction: input.friction,
+    focus_minutes: input.focusMinutes,
+  });
 }
 
 export function quickOnboard(
