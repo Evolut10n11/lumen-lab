@@ -176,6 +176,17 @@
     "status": "done"
   },
   {
+    "id": "exp-018",
+    "title": "Universal profile layer",
+    "hypothesis": "An explicit validated local profile can make the same deterministic Lumen core prioritize different work for different users or projects without hidden conversation context.",
+    "impact": 10,
+    "learning": 9,
+    "feasibility": 8,
+    "novelty": 8,
+    "risk": 1,
+    "status": "done"
+  },
+  {
     "id": "exp-014",
     "title": "State schema versioning",
     "hypothesis": "Explicit schema versions and deterministic migrations can let Lumen evolve its persisted state without silent compatibility failures.",

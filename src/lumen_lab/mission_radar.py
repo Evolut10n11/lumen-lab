@@ -5,8 +5,28 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .profile import Profile, normalized_label
+
 DEFAULT_MISSIONS_PATH = Path("state/missions.json")
 ALLOWED_STATUSES = {"active", "paused", "done"}
+
+
+def _validated_tags(value: object) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ValueError("mission tags must be a JSON list")
+    tags: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError("mission tags must contain non-empty strings")
+        normalized = normalized_label(item)
+        if normalized in seen:
+            raise ValueError(f"mission tags contain duplicate value: {item.strip()}")
+        seen.add(normalized)
+        tags.append(item.strip())
+    return tuple(tags)
 
 
 @dataclass(frozen=True)
@@ -22,10 +42,11 @@ class Mission:
     effort: int
     risk: int
     status: str = "active"
+    tags: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> Mission:
-        expected = {
+        required = {
             "id",
             "title",
             "why_now",
@@ -38,14 +59,17 @@ class Mission:
             "risk",
             "status",
         }
-        unknown = set(raw) - expected
-        missing = expected - set(raw)
+        allowed = required | {"tags"}
+        unknown = set(raw) - allowed
+        missing = required - set(raw)
         if unknown:
             raise ValueError(f"unknown mission fields: {', '.join(sorted(unknown))}")
         if missing:
             raise ValueError(f"missing mission fields: {', '.join(sorted(missing))}")
 
-        mission = cls(**raw)
+        payload = {name: raw[name] for name in required}
+        payload["tags"] = _validated_tags(raw.get("tags"))
+        mission = cls(**payload)
         mission.validate()
         return mission
 
@@ -90,6 +114,7 @@ class Mission:
             "effort": self.effort,
             "risk": self.risk,
             "status": self.status,
+            "tags": list(self.tags),
             "score": self.score,
         }
 
@@ -112,12 +137,47 @@ def load_missions(path: Path = DEFAULT_MISSIONS_PATH) -> list[Mission]:
     return missions
 
 
-def ranked_missions(missions: list[Mission]) -> list[Mission]:
+def profile_alignment(mission: Mission, profile: Profile) -> float:
+    weights = [
+        weight
+        for tag in mission.tags
+        if (weight := profile.priority_for(tag)) is not None
+    ]
+    return float(max(weights)) if weights else 5.0
+
+
+def mission_score(mission: Mission, profile: Profile | None = None) -> float:
+    if profile is None:
+        return mission.score
+    alignment = profile_alignment(mission, profile)
+    alignment_adjustment = (alignment - 5.0) * 0.30
+    risk_over_tolerance = max(0, mission.risk - profile.risk_tolerance)
+    risk_adjustment = risk_over_tolerance * 0.10
+    return round(min(10.0, max(0.0, mission.score + alignment_adjustment - risk_adjustment)), 2)
+
+
+def ranked_missions(
+    missions: list[Mission], profile: Profile | None = None
+) -> list[Mission]:
     active = [mission for mission in missions if mission.status == "active"]
-    return sorted(active, key=lambda mission: (-mission.score, mission.id))
+    return sorted(
+        active,
+        key=lambda mission: (-mission_score(mission, profile), mission.id),
+    )
 
 
-def radar_snapshot(missions: list[Mission], top: int = 1) -> list[dict[str, Any]]:
+def radar_snapshot(
+    missions: list[Mission], top: int = 1, profile: Profile | None = None
+) -> list[dict[str, Any]]:
     if top < 1:
         raise ValueError("top must be at least 1")
-    return [mission.to_dict() for mission in ranked_missions(missions)[:top]]
+    snapshot: list[dict[str, Any]] = []
+    for mission in ranked_missions(missions, profile)[:top]:
+        item = mission.to_dict()
+        item["base_score"] = mission.score
+        item["score"] = mission_score(mission, profile)
+        if profile is not None:
+            item["profile_id"] = profile.id
+            item["profile_alignment"] = profile_alignment(mission, profile)
+        snapshot.append(item)
+    return snapshot

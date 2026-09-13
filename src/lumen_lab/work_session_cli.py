@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .mission_radar import DEFAULT_MISSIONS_PATH, load_missions
+from .profile import DEFAULT_PROFILE_PATH, load_profile
 from .work_session import (
     DEFAULT_PROGRESS_PATH,
     DEFAULT_TEMPLATES_PATH,
@@ -25,6 +26,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--mission",
         help="Use a specific active mission instead of the current top-ranked mission.",
+    )
+    parser.add_argument(
+        "--profile",
+        type=Path,
+        default=DEFAULT_PROFILE_PATH,
+        help="Explicit local profile JSON (default: state/profile.json when present).",
     )
     parser.add_argument(
         "--done",
@@ -62,7 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         missions = load_missions(args.missions)
         templates = load_templates(args.templates)
-        mission = choose_mission(missions, args.mission)
+        profile = load_profile(args.profile) if args.profile.exists() else None
+        mission = choose_mission(missions, args.mission, profile)
         template = template_for(templates, mission.id)
 
         progress = load_progress(args.progress)
@@ -73,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.done,
                 len(template.steps),
             )
-        snapshot = session_snapshot(mission, template, progress)
+        snapshot = session_snapshot(mission, template, progress, profile)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"work session error: {exc}")
         return 2
@@ -83,10 +91,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     progress_info = snapshot["progress"]
-    print("Elaine Work Session")
+    print("Lumen Work Session")
     print(f"Mission: {snapshot['title']} [{snapshot['mission_id']}]")
+    if snapshot["profile_id"] is not None:
+        print(f"Profile: {snapshot['profile_id']}")
     print(f"Why now: {snapshot['why_now']}")
-    print(f"Priority score: {snapshot['score']:.2f}")
+    score_text = f"{snapshot['score']:.2f}"
+    if snapshot["score"] != snapshot["base_score"]:
+        score_text += f" (base {snapshot['base_score']:.2f})"
+    print(f"Priority score: {score_text}")
     print(f"Focus window: {snapshot['focus_minutes']} minutes")
     print(
         "Progress: "
