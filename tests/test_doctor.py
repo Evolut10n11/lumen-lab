@@ -6,6 +6,7 @@ from pathlib import Path
 from lumen_lab.doctor import run_doctor
 from lumen_lab.ledger import Outcome
 from lumen_lab.models import Experiment
+from lumen_lab.state_schema import MANAGED_FILES, MANIFEST_NAME, current_manifest
 from lumen_lab.synthesis import render_synthesis
 
 
@@ -97,6 +98,15 @@ def write_state(
         synthesis += "stale\n"
     (state / "SYNTHESIS.md").write_text(synthesis, encoding="utf-8")
 
+    for name in MANAGED_FILES:
+        path = state / name
+        if not path.exists():
+            path.write_text("{}\n", encoding="utf-8")
+    (state / MANIFEST_NAME).write_text(
+        json.dumps(current_manifest().to_dict(), indent=2) + "\n",
+        encoding="utf-8",
+    )
+
 
 def checks_by_name(root: Path) -> dict[str, tuple[bool, str]]:
     report = run_doctor(root)
@@ -119,6 +129,7 @@ def test_healthy_state_passes_without_writes(tmp_path: Path) -> None:
 
     assert report.healthy
     assert [check.name for check in report.checks] == [
+        "state-schema",
         "backlog",
         "outcomes",
         "experiment-outcome-links",
@@ -210,6 +221,13 @@ def test_stale_synthesis_fails(tmp_path: Path) -> None:
     checks = checks_by_name(tmp_path)
     assert checks["synthesis"][0] is False
     assert "stale" in checks["synthesis"][1]
+
+
+def test_missing_schema_manifest_fails_schema_check(tmp_path: Path) -> None:
+    write_state(tmp_path)
+    (tmp_path / "state" / MANIFEST_NAME).unlink()
+    checks = checks_by_name(tmp_path)
+    assert checks["state-schema"][0] is False
 
 
 def test_repository_state_is_healthy() -> None:

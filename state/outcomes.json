@@ -124,5 +124,12 @@
     "observed_value": 9,
     "learning_value": 10,
     "result": "Implemented review-gated profile-driven proposal generation with a strict proposal schema, deterministic mission/profile evidence, policy and risk enforcement, optional OpenAI-compatible LLM enrichment with safe fallback, explicit review snapshots, separately revalidated backlog acceptance, tests, CLI integration, and documentation without granting generators execution authority."
+  },
+  {
+    "experiment_id": "exp-014",
+    "expected_score": 7.45,
+    "observed_value": 8,
+    "learning_value": 9,
+    "result": "Implemented explicit deterministic state schema metadata with strict version validation, read-only migration planning, metadata-only legacy migration, doctor integration, tests, and documentation without rewriting existing state payloads."
   }
 ]

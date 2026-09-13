@@ -52,6 +52,10 @@
     "artifacts": ["src/lumen_lab/doctor.py", "docs/state-doctor.md"]
   },
   {
+    "experiment_id": "exp-014",
+    "artifacts": ["src/lumen_lab/state_schema.py", "docs/state-schema-versioning.md"]
+  },
+  {
     "experiment_id": "exp-015",
     "artifacts": ["src/lumen_lab/provenance.py", "docs/provenance.md"]
   },
