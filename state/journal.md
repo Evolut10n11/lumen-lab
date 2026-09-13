@@ -30,3 +30,11 @@ Expected score: 6.65. Observed score: 8.30. Calibration error: 1.65.
 
 The qualitative planner layer adds useful flexibility without becoming authoritative or mutating state. Three outcomes are still below the five-outcome threshold required before any planner weight changes.
 
+## 2026-09-13 — exp-004 completed
+
+Implemented the constrained experiment execution layer. Commands use argv with `shell=False`, executable names require an explicit allowlist, every run receives a fresh temporary working directory and a minimal environment, stdin is disabled, runtime is bounded, and stdout/stderr are drained concurrently with bounded in-memory capture. Structured JSON results are available through `lumen sandbox`.
+
+Expected score: 6.20. Observed score: 8.30. Calibration error: 2.10.
+
+The main learning was also a boundary: subprocess containment is useful for removing ambient authority, but it is not an OS security sandbox. Allowed programs still retain the current user's operating-system permissions, so hostile code requires a container, VM, or OS-enforced sandbox. The original four-experiment bootstrap backlog is now complete. Four outcomes remain below the five-outcome threshold required before planner weight changes.
+

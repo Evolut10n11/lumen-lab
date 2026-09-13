@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from .ledger import Outcome, mean_absolute_calibration_error
 from .llm_planner import OpenAICompatiblePlanner, recommend_with_fallback
 from .models import Experiment
 from .planner import choose_next, ranked
+from .sandbox import SandboxError, run_sandboxed
 from .store import LabStore
 
 
@@ -243,6 +245,51 @@ def cmd_advise(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_sandbox(args: argparse.Namespace) -> int:
+    argv = list(args.argv)
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv:
+        raise SystemExit("sandbox command is required after --")
+    if not args.allow:
+        raise SystemExit("at least one --allow NAME is required")
+
+    try:
+        result = run_sandboxed(
+            argv,
+            allowed_executables=args.allow,
+            timeout_seconds=args.timeout,
+            max_output_bytes=args.max_output_bytes,
+        )
+    except SandboxError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        status = "TIMEOUT" if result.timed_out else f"EXIT {result.returncode}"
+        print(f"Sandbox: {status} in {result.duration_ms} ms")
+        print(f"Working directory: {result.working_directory}")
+        if result.stdout:
+            print("--- stdout ---")
+            print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+            if result.stdout_truncated:
+                print("[stdout truncated]")
+        if result.stderr:
+            print("--- stderr ---")
+            print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+            if result.stderr_truncated:
+                print("[stderr truncated]")
+
+    if result.timed_out:
+        return 124
+    if result.returncode is None:
+        return 1
+    if 0 <= result.returncode <= 255:
+        return result.returncode
+    return 1
+
+
 def cmd_journal(args: argparse.Namespace) -> int:
     _store().append_journal(args.title, args.body)
     print("Journal entry appended.")
@@ -333,6 +380,23 @@ def build_parser() -> argparse.ArgumentParser:
     advise.add_argument("--token", default="")
     advise.add_argument("--timeout", type=float, default=10.0)
     advise.set_defaults(func=cmd_advise)
+
+    sandbox = subparsers.add_parser(
+        "sandbox",
+        help="Run one explicitly allowed command in a constrained temporary workspace.",
+    )
+    sandbox.add_argument(
+        "--allow",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="Bare executable name to allow; repeat to allow more than one.",
+    )
+    sandbox.add_argument("--timeout", type=float, default=5.0)
+    sandbox.add_argument("--max-output-bytes", type=int, default=64 * 1024)
+    sandbox.add_argument("--json", action="store_true")
+    sandbox.add_argument("argv", nargs=argparse.REMAINDER)
+    sandbox.set_defaults(func=cmd_sandbox)
 
     journal = subparsers.add_parser("journal", help="Append a manual lab journal entry.")
     journal.add_argument("title")
