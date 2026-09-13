@@ -86,3 +86,13 @@ Expected score: 8.75. Observed score: 9.00. Calibration error: 0.25. Nine-outcom
 
 The result strengthens the case for treating current bias as an absolute-scale problem rather than immediately retuning feature coefficients. Future planner work should investigate an intercept or scale correction separately from ranking weights.
 
+## 2026-09-13 — exp-010 completed
+
+Implemented an advisory additive-intercept calibration checkpoint with leave-one-out evaluation so each held-out outcome is corrected using only residuals from the other outcomes. The new `lumen-intercept` command reports baseline MAE, leave-one-out corrected MAE, improvement, proposed full-sample intercept, ranking invariance, and a fixed-threshold recommendation.
+
+Across the first nine outcomes, baseline MAE is 0.99 and leave-one-out corrected MAE is 0.52, a 47.05% improvement. The proposed full-sample intercept is +0.99. Adding a single constant preserves every pairwise score difference, so the 76.19% ranking-quality evidence from exp-009 is not disturbed.
+
+Expected score: 8.10. Observed score: 8.60. Calibration error: 0.50. Ten-outcome calibration MAE: 0.94.
+
+The intercept is intentionally not applied to `Experiment.score()`. Current evidence supports keeping it advisory until more outcomes confirm that the absolute-scale correction generalizes beyond this small sequential sample.
+

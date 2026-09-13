@@ -97,5 +97,16 @@
     "novelty": 7,
     "risk": 1,
     "status": "done"
+  },
+  {
+    "id": "exp-010",
+    "title": "Planner intercept calibration",
+    "hypothesis": "A simple additive intercept estimated from prior residuals can improve absolute calibration without changing candidate ordering or relative feature weights.",
+    "impact": 8,
+    "learning": 10,
+    "feasibility": 9,
+    "novelty": 5,
+    "risk": 1,
+    "status": "done"
   }
 ]

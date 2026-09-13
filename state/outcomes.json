@@ -61,5 +61,12 @@
     "observed_value": 9,
     "learning_value": 9,
     "result": "Implemented a deterministic pairwise planner ranking-quality checkpoint with explicit tie handling, fixed evidence thresholds, CLI reporting, tests, and documentation. The first eight outcomes show 76.19% comparable-pair ordering accuracy, supporting unchanged relative feature weights despite absolute underprediction."
+  },
+  {
+    "experiment_id": "exp-010",
+    "expected_score": 8.1,
+    "observed_value": 8,
+    "learning_value": 10,
+    "result": "Implemented a deterministic leave-one-out additive-intercept calibration checkpoint with fixed evidence gates, CLI reporting, tests, and documentation. Current evidence reduces MAE from 0.99 to 0.52 with a proposed +0.99 advisory intercept while preserving relative ranking order."
   }
 ]
