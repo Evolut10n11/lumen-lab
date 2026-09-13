@@ -68,7 +68,7 @@ The only remaining backlog item is now `exp-007` sandbox capability manifests wi
 
 ## 2026-09-13 — exp-007 completed
 
-Implemented named capability manifests as a deterministic audit layer over the existing constrained subprocess runner. Manifests reuse the same bare-executable allowlist validation, carry bounded timeout/output policy, can be listed without execution, and cannot be mixed with manual allowlist or limit overrides. The original `lumen sandbox --allow ...` path remains available for explicit one-off runs.
+Implemented named capability manifests as a deterministic audit layer over the existing constrained subprocess runner. Manifests reuse the same bare-executable validation, carry bounded timeout/output policy, can be listed without execution, and cannot be mixed with manual allowlist or limit overrides. The original `lumen sandbox --allow ...` path remains available for explicit one-off runs.
 
 The repository now includes a conservative `python-basic` example and tests for duplicate names, path-like executable rejection, missing profiles, deterministic listing, manual/manifest conflicts, and real manifest-backed execution. Manifests remain convenience and policy objects rather than an OS security boundary.
 
@@ -166,12 +166,22 @@ Expected score: 8.75. Observed score: 9.30. Calibration error: 0.55. Seventeen-o
 
 Against the frozen `+0.94` baseline, `exp-018` is the seventh forward holdout: raw error 0.55 becomes 0.39. Across seven holdouts the raw MAE is 0.61 and corrected MAE is 0.33, a 45.18% improvement without refitting. The baseline remains frozen. The internal backlog still contains `exp-014` state schema versioning, while the next product step should generate reviewable candidate ideas from the explicit profile plus repository evidence without granting proposal generation any execution authority.
 
+## 2026-09-13 — exp-019 completed
+
+Implemented review-gated profile-driven proposal generation. `lumen-propose` now turns the explicit local profile plus repository-owned mission and experiment evidence into a strict proposal batch. The deterministic path is the default; profile policy can disable generation or allow optional OpenAI-compatible enrichment, but model output is constrained by the same proposal schema, evidence references, duplicate guards, risk tolerance, and candidate limit.
+
+Preview performs no state mutation. A proposal can be written only to an explicit review snapshot, and backlog mutation is a separate acceptance step requiring that snapshot, a selected proposal ID, and a new experiment ID. Acceptance revalidates the current profile, missions, evidence, risk, duplicates, and normal `Experiment` schema. There is intentionally no path where a fresh model response can generate and accept itself in one operation, and proposals have no command/tool/external execution authority.
+
+Expected score: 8.70. Observed score: 9.30. Calibration error: 0.60. Eighteen-outcome calibration MAE: 0.79.
+
+Against the frozen `+0.94` baseline, `exp-019` is the eighth forward holdout: raw error 0.60 becomes 0.34. Across eight holdouts the raw MAE is 0.61 and corrected MAE is 0.33, a 44.95% improvement without refitting. The baseline remains frozen. The remaining internal backlog is `exp-014` state schema versioning; the product-facing Profile → Mission → Proposal pipeline is now stable enough for the dedicated README/documentation pass.
+
 ## 2026-09-13 — exp-014 completed
 
 Implemented explicit state schema versioning with a repository-owned `state/schema_versions.json` manifest, strict manifest and per-file version validation, the `lumen-schema` status/JSON interface, and an explicit metadata-only migration for legacy repositories that lack the manifest. The current migration verifies every managed payload file before creating version metadata and never rewrites the payload files themselves.
 
 `lumen-doctor` now checks schema compatibility before the rest of repository health, and tests cover current state, future/unknown versions, missing managed files, read-only migration planning, byte-for-byte preservation of legacy payloads, and the real repository checkout. The first CI attempt failed only lint; after line wrapping/import formatting, the implementation passed on Python 3.11, 3.12, and 3.13.
 
-Expected score: 7.45. Observed score: 8.30. Calibration error: 0.85. Eighteen-outcome calibration MAE: 0.81.
+Expected score: 7.45. Observed score: 8.30. Calibration error: 0.85. Nineteen-outcome calibration MAE: 0.79.
 
-Against the frozen `+0.94` baseline, `exp-014` is the eighth forward holdout: raw error 0.85 becomes 0.09 without refitting. The internal deterministic backlog is now empty. Future state-format changes can add explicit version-to-version transforms instead of silently guessing compatibility.
+Against the frozen `+0.94` baseline, `exp-014` is the ninth forward holdout: raw error 0.85 becomes 0.09 without refitting. The internal deterministic backlog is now empty. Future state-format changes can add explicit version-to-version transforms instead of silently guessing compatibility.
