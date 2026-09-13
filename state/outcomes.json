@@ -96,5 +96,12 @@
     "observed_value": 9,
     "learning_value": 9,
     "result": "Implemented deterministic Elaine focused work sessions with reviewed mission templates, bounded focus windows, ordered checklists, Definition of Done, explicit local-only progress updates, a safety boundary that prevents task execution, JSON output, tests, and documentation."
+  },
+  {
+    "experiment_id": "exp-013",
+    "expected_score": 7.85,
+    "observed_value": 8,
+    "learning_value": 10,
+    "result": "Implemented a deterministic read-only state integrity doctor covering backlog/outcome links, candidate registry validation, frozen baseline membership, holdout evaluation, exact synthesis freshness, stable diagnostics, CLI exit codes, tests, and documentation without automatic repair."
   }
 ]

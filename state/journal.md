@@ -135,3 +135,13 @@ The default command is read-only. Progress changes require an explicit `--done <
 Expected score: 8.45. Observed score: 9.00. Calibration error: 0.55. Fourteen-outcome calibration MAE: 0.83.
 
 Against the frozen `+0.94` baseline, `exp-017` is the fourth true holdout: raw error 0.55 becomes 0.39. Across four holdouts the raw MAE is 0.56 and corrected MAE is 0.38, a 32.89% improvement without refitting. The product learning is that mission selection and work execution can stay cleanly separated: Elaine can decide what deserves focus, structure the session, and track local progress without silently acquiring authority to perform external actions.
+
+## 2026-09-13 — exp-013 completed
+
+Implemented a deterministic read-only state integrity doctor. `lumen-doctor` checks unique backlog and outcome IDs, experiment/outcome lifecycle links, the declarative candidate registry, frozen calibration-baseline membership, holdout evaluation, and exact synthesis freshness. Diagnostics have a stable order, failures return a non-zero exit status, and the doctor never creates, rewrites, or repairs state.
+
+The test suite covers healthy state without writes, duplicate IDs, orphan and non-done outcomes, completed experiments without outcomes, malformed registries, invalid baseline membership, stale synthesis, deterministic check order, and the real repository checkout. During integration it also exposed a pre-existing stale `safety-boundaries` signal in `SYNTHESIS.md`, which was corrected instead of weakening the check.
+
+Expected score: 7.85. Observed score: 8.60. Calibration error: 0.75. Fifteen-outcome calibration MAE: 0.83.
+
+Against the frozen `+0.94` baseline, `exp-013` is the fifth forward holdout: raw error 0.75 becomes 0.19. Across five holdouts the raw MAE is 0.60 and corrected MAE is 0.34, a 43.33% improvement without refitting. The baseline remains frozen. The remaining deterministic backlog is `exp-015` followed by `exp-014`, but product work should now generalize the user-facing mission layer instead of hard-coding one person or persona.
