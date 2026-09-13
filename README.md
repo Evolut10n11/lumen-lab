@@ -15,7 +15,9 @@ The goal is not to build one fixed product. The repository is an evolving enviro
 
 ## Current capabilities
 
-The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, and run controlled subprocess experiments in a constrained temporary workspace.
+The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, run controlled subprocess experiments in a constrained temporary workspace, and rank a small user-facing mission portfolio through Elaine Mission Radar.
+
+Mission Radar reads `state/missions.json`, ranks only active missions with a deterministic value/urgency/leverage/momentum/effort/risk formula, and returns a concrete next action. It is read-only and never executes that action. See `docs/mission-radar.md`.
 
 Backlog replenishment is dry-run by default and refuses to run while backlog or active work exists. It never calls external services or overwrites an existing experiment ID. See `docs/replenishment.md` for the policy.
 
@@ -30,7 +32,15 @@ python -m venv .venv
 python -m pip install -e .[dev]
 lumen status
 lumen ledger
+lumen-radar
 pytest
+```
+
+Show more of the current mission portfolio:
+
+```bash
+lumen-radar --top 3
+lumen-radar --json
 ```
 
 Preview next-generation candidates when the queue is empty:
@@ -59,7 +69,7 @@ lumen sandbox --allow python --timeout 2 --json -- python -c "print('hello')"
 ## Repository map
 
 - `src/lumen_lab/` — core engine and CLI.
-- `state/` — backlog, experiment outcomes, and journal data.
+- `state/` — backlog, experiment outcomes, mission portfolio, and journal data.
 - `tests/` — executable behavior contracts.
 - `.github/workflows/` — CI and scheduled health checks.
 - `docs/` — architecture, safety notes, and operating guidance.
