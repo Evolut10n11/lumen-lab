@@ -99,15 +99,12 @@ def test_no_adapter_uses_deterministic_planner() -> None:
 
 def test_markdown_fenced_json_is_supported() -> None:
     def transport(endpoint, payload, headers, timeout):
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "content": "```json\n{\"experiment_id\":\"exp-a\",\"reason\":\"Lower risk\"}\n```"
-                    }
-                }
-            ]
-        }
+        fenced = (
+            "```json\n"
+            '{"experiment_id":"exp-a","reason":"Lower risk"}'
+            "\n```"
+        )
+        return {"choices": [{"message": {"content": fenced}}]}
 
     adapter = OpenAICompatiblePlanner("http://local", "model", transport=transport)
     recommendation = recommend_with_fallback(_experiments(), adapter)
