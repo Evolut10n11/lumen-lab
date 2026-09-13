@@ -1,6 +1,5 @@
-from pathlib import Path
 import json
-
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WINDOWS_TAURI_CONFIG = REPO_ROOT / "apps" / "desktop" / "src-tauri" / "tauri.windows.conf.json"
