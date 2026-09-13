@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .feedback import PreferenceFeedback, feedback_adjustment, load_feedback, record_feedback
+from .localization import is_russian, normalize_locale
 from .mission_radar import Mission, load_missions, radar_snapshot
 from .personalization import build_profile, initialize_workspace, profile_payload
 from .profile import Profile, load_profile, normalized_label
@@ -56,30 +57,57 @@ def _selection_explanation(
     profile: Profile,
     score: float,
     feedback: PreferenceFeedback,
+    *,
+    locale: str = "en",
 ) -> dict[str, Any]:
+    locale = normalize_locale(locale)
+    russian = is_russian(locale)
     matched = _matched_priorities(mission, profile)
     feedback_delta = feedback_adjustment(mission.id, mission.tags, feedback)
     reasons: list[str] = [mission.why_now]
     if matched:
         strongest = matched[0]
         reasons.append(
-            f"It matches your priority '{strongest['name']}' weighted "
-            f"{strongest['weight']}/10."
+            (
+                f"Это совпадает с вашим приоритетом «{strongest['name']}»."
+                if russian
+                else f"It matches your priority '{strongest['name']}' weighted {strongest['weight']}/10."
+            )
         )
     if mission.risk > profile.risk_tolerance:
         reasons.append(
-            f"Its risk {mission.risk}/10 is above your tolerance "
-            f"{profile.risk_tolerance}/10, so its personalized score is reduced."
+            (
+                "Задача выглядит рискованнее вашего обычного диапазона, поэтому её рейтинг снижен."
+                if russian
+                else (
+                    f"Its risk {mission.risk}/10 is above your tolerance "
+                    f"{profile.risk_tolerance}/10, so its personalized score is reduced."
+                )
+            )
         )
     else:
         reasons.append(
-            f"Its risk {mission.risk}/10 is within your tolerance "
-            f"{profile.risk_tolerance}/10."
+            (
+                "Уровень риска этой задачи укладывается в ваш текущий диапазон."
+                if russian
+                else (
+                    f"Its risk {mission.risk}/10 is within your tolerance "
+                    f"{profile.risk_tolerance}/10."
+                )
+            )
         )
     if feedback_delta > 0:
-        reasons.append("Your recent choices make this kind of work a better fit.")
+        reasons.append(
+            "Ваши недавние действия показывают, что такой формат вам подходит."
+            if russian
+            else "Your recent choices make this kind of work a better fit."
+        )
     elif feedback_delta < 0:
-        reasons.append("Your recent choices make this kind of work a weaker fit.")
+        reasons.append(
+            "Ваши недавние действия показывают, что такой формат подходит хуже."
+            if russian
+            else "Your recent choices make this kind of work a weaker fit."
+        )
     return {
         "score": score,
         "base_score": mission.score,
@@ -93,27 +121,47 @@ def _experience_payload(
     profile: Profile,
     today: dict[str, Any] | None,
     feedback: PreferenceFeedback,
+    *,
+    locale: str = "en",
 ) -> dict[str, Any]:
+    locale = normalize_locale(locale)
+    russian = is_russian(locale)
     if today is None:
         return {
-            "headline": "You're clear for now.",
-            "message": "There is no active mission competing for your attention.",
+            "headline": "На сейчас всё спокойно." if russian else "You're clear for now.",
+            "message": (
+                "Сейчас нет активной задачи, которая требует вашего внимания."
+                if russian
+                else "There is no active mission competing for your attention."
+            ),
             "primary_action": None,
             "quick_actions": [],
             "learning": {
                 "active": feedback.events > 0,
                 "signal_count": feedback.events,
-                "message": "Lumen adapts quietly as you use it.",
+                "message": (
+                    "Lumen незаметно адаптируется по мере использования."
+                    if russian
+                    else "Lumen adapts quietly as you use it."
+                ),
             },
         }
 
     progress = today.get("progress")
     completed = progress.get("completed", 0) if isinstance(progress, dict) else 0
     total = progress.get("total", 0) if isinstance(progress, dict) else 0
-    primary_label = "Continue" if completed else "Start"
+    primary_label = (
+        ("Продолжить" if completed else "Начать")
+        if russian
+        else ("Continue" if completed else "Start")
+    )
 
     return {
-        "headline": f"One useful thing, {profile.display_name}.",
+        "headline": (
+            f"Одно полезное действие, {profile.display_name}."
+            if russian
+            else f"One useful thing, {profile.display_name}."
+        ),
         "message": today["title"],
         "primary_action": {
             "action": "continue",
@@ -124,17 +172,17 @@ def _experience_payload(
         "quick_actions": [
             {
                 "action": "more_like_this",
-                "label": "More like this",
+                "label": "Больше такого" if russian else "More like this",
                 "mission_id": today["mission_id"],
             },
             {
                 "action": "not_now",
-                "label": "Not now",
+                "label": "Не сейчас" if russian else "Not now",
                 "mission_id": today["mission_id"],
             },
             {
                 "action": "less_like_this",
-                "label": "Less like this",
+                "label": "Меньше такого" if russian else "Less like this",
                 "mission_id": today["mission_id"],
             },
         ],
@@ -142,36 +190,49 @@ def _experience_payload(
             "active": feedback.events > 0,
             "signal_count": feedback.events,
             "message": (
-                "Lumen is already adapting to what you actually do."
-                if feedback.events
-                else "No tuning required — your choices will personalize Lumen over time."
+                (
+                    "Lumen уже адаптируется к тому, что вы действительно делаете."
+                    if feedback.events
+                    else "Ничего настраивать не нужно — ваши действия со временем персонализируют Lumen."
+                )
+                if russian
+                else (
+                    "Lumen is already adapting to what you actually do."
+                    if feedback.events
+                    else "No tuning required — your choices will personalize Lumen over time."
+                )
             ),
         },
     }
 
 
-def _onboarding_payload() -> dict[str, Any]:
+def _onboarding_payload(locale: str = "en") -> dict[str, Any]:
+    russian = is_russian(locale)
     return {
         "mode": "quick",
-        "headline": "What do you want to move forward?",
-        "message": "Give Lumen one to five goals. You can refine the rest later.",
+        "headline": "Что вы хотите продвинуть?" if russian else "What do you want to move forward?",
+        "message": (
+            "Расскажите Lumen об одной-пяти целях. Остальное можно уточнить позже."
+            if russian
+            else "Give Lumen one to five goals. You can refine the rest later."
+        ),
         "fields": [
             {
                 "name": "display_name",
                 "kind": "text",
-                "label": "What should Lumen call you?",
+                "label": "Как к вам обращаться?" if russian else "What should Lumen call you?",
                 "required": True,
             },
             {
                 "name": "goals",
                 "kind": "list",
-                "label": "What matters most right now?",
+                "label": "Что сейчас важнее всего?" if russian else "What matters most right now?",
                 "required": True,
                 "min_items": 1,
                 "max_items": 5,
             },
         ],
-        "submit_label": "Start with Lumen",
+        "submit_label": "Начать с Lumen" if russian else "Start with Lumen",
     }
 
 
@@ -193,8 +254,10 @@ class LumenApplication:
         preferred_stack: Iterable[str] = (),
         risk_tolerance: int = 5,
         replace: bool = False,
+        locale: str = "en",
     ) -> dict[str, Any]:
         """Create one isolated user workspace and return its first dashboard."""
+        locale = normalize_locale(locale)
         workspace = UserWorkspace.from_root(self.root, user_id)
         profile = build_profile(
             user_id=workspace.user_id,
@@ -206,8 +269,8 @@ class LumenApplication:
             preferred_stack=preferred_stack,
             risk_tolerance=risk_tolerance,
         )
-        initialize_workspace(workspace, profile, replace=replace)
-        return self.dashboard(workspace.user_id)
+        initialize_workspace(workspace, profile, replace=replace, locale=locale)
+        return self.dashboard(workspace.user_id, locale=locale)
 
     def quick_onboard(
         self,
@@ -216,6 +279,7 @@ class LumenApplication:
         display_name: str,
         goals: Iterable[str],
         replace: bool = False,
+        locale: str = "en",
     ) -> dict[str, Any]:
         """Create a useful profile from normal-language goals without tuning weights."""
         return self.onboard(
@@ -223,6 +287,7 @@ class LumenApplication:
             display_name=display_name,
             priorities=_quick_priorities(goals),
             replace=replace,
+            locale=locale,
         )
 
     def _users(self) -> list[dict[str, str]]:
@@ -244,8 +309,10 @@ class LumenApplication:
         user_id: str | None = None,
         *,
         top: int = 3,
+        locale: str = "en",
     ) -> dict[str, Any]:
         """Return everything a GUI needs to choose onboarding or the main dashboard."""
+        locale = normalize_locale(locale)
         workspace = UserWorkspace.from_root(self.root, user_id)
         initialized = workspace.initialized()
         return {
@@ -253,8 +320,12 @@ class LumenApplication:
             "selected_user_id": workspace.user_id,
             "initialized": initialized,
             "users": self._users(),
-            "onboarding": None if initialized else _onboarding_payload(),
-            "dashboard": self.dashboard(workspace.user_id, top=top) if initialized else None,
+            "onboarding": None if initialized else _onboarding_payload(locale),
+            "dashboard": (
+                self.dashboard(workspace.user_id, top=top, locale=locale)
+                if initialized
+                else None
+            ),
         }
 
     def workspace(self, user_id: str | None = None) -> UserWorkspace:
@@ -262,7 +333,14 @@ class LumenApplication:
         workspace.require_initialized()
         return workspace
 
-    def dashboard(self, user_id: str | None = None, *, top: int = 3) -> dict[str, Any]:
+    def dashboard(
+        self,
+        user_id: str | None = None,
+        *,
+        top: int = 3,
+        locale: str = "en",
+    ) -> dict[str, Any]:
+        locale = normalize_locale(locale)
         workspace = self.workspace(user_id)
         profile = load_profile(workspace.profile_path)
         missions = load_missions(workspace.missions_path)
@@ -282,6 +360,7 @@ class LumenApplication:
                 profile,
                 float(today["score"]),
                 feedback,
+                locale=locale,
             )
 
         completed_steps = sum(len(items) for items in progress.values())
@@ -293,7 +372,8 @@ class LumenApplication:
         return {
             "schema_version": APP_SCHEMA_VERSION,
             "user": profile_payload(profile),
-            "experience": _experience_payload(profile, today, feedback),
+            "locale": locale,
+            "experience": _experience_payload(profile, today, feedback, locale=locale),
             "today": today,
             "radar": radar,
             "personalization": {
@@ -314,6 +394,7 @@ class LumenApplication:
         *,
         mission_id: str | None = None,
         top: int = 3,
+        locale: str = "en",
     ) -> dict[str, Any]:
         """Apply one low-friction preference action and return the refreshed dashboard."""
         actions = {
@@ -345,7 +426,7 @@ class LumenApplication:
             sentiment=sentiment,
             include_tags=include_tags,
         )
-        return self.dashboard(workspace.user_id, top=top)
+        return self.dashboard(workspace.user_id, top=top, locale=locale)
 
     def rate_mission(
         self,
@@ -354,6 +435,7 @@ class LumenApplication:
         *,
         mission_id: str | None = None,
         top: int = 3,
+        locale: str = "en",
     ) -> dict[str, Any]:
         """Compatibility API for explicit like/dislike feedback."""
         mapping = {"like": "more_like_this", "dislike": "less_like_this"}
@@ -367,6 +449,7 @@ class LumenApplication:
             user_id,
             mission_id=mission_id,
             top=top,
+            locale=locale,
         )
 
     def complete_step(
@@ -375,6 +458,7 @@ class LumenApplication:
         user_id: str | None = None,
         *,
         mission_id: str | None = None,
+        locale: str = "en",
     ) -> dict[str, Any]:
         workspace = self.workspace(user_id)
         profile = load_profile(workspace.profile_path)
@@ -410,5 +494,6 @@ class LumenApplication:
             profile,
             float(snapshot["score"]),
             feedback,
+            locale=locale,
         )
         return snapshot
