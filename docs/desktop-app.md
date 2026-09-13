@@ -50,9 +50,11 @@ per-user local workspace
 
 The UI does not reimplement ranking or personalization. It renders the application-service contract and sends explicit product actions back to the Python engine.
 
-## Local data
+## Local data and trust boundary
 
 The Tauri host resolves the operating system's application-data directory and launches the Python bridge with that directory as its working directory. The existing `UserWorkspace` abstraction therefore stores runtime state under the Lumen app-data area rather than inside the Git checkout.
+
+The data root is host-controlled by design. The webview request contains only an action, user ID, and action payload; the Python bridge always uses its process working directory and ignores any caller-supplied `root` field. This prevents a compromised or malformed UI request from redirecting Lumen state writes to another path that the current user can access.
 
 No user should need to know that `.lumen/users/<user-id>/` exists.
 
