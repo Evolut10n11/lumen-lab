@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .feedback import feedback_adjustment, load_feedback, record_feedback
+from .feedback import PreferenceFeedback, feedback_adjustment, load_feedback, record_feedback
 from .mission_radar import Mission, load_missions, radar_snapshot
 from .personalization import build_profile, initialize_workspace, profile_payload
 from .profile import Profile, load_profile, normalized_label
@@ -35,7 +35,7 @@ def _selection_explanation(
     mission: Mission,
     profile: Profile,
     score: float,
-    feedback,
+    feedback: PreferenceFeedback,
 ) -> dict[str, Any]:
     matched = _matched_priorities(mission, profile)
     feedback_delta = feedback_adjustment(mission.id, mission.tags, feedback)
@@ -57,19 +57,76 @@ def _selection_explanation(
             f"{profile.risk_tolerance}/10."
         )
     if feedback_delta > 0:
-        reasons.append(
-            f"Your previous feedback raises this mission by {feedback_delta:.2f} points."
-        )
+        reasons.append("Your recent choices make this kind of work a better fit.")
     elif feedback_delta < 0:
-        reasons.append(
-            f"Your previous feedback lowers this mission by {abs(feedback_delta):.2f} points."
-        )
+        reasons.append("Your recent choices make this kind of work a weaker fit.")
     return {
         "score": score,
         "base_score": mission.score,
         "feedback_adjustment": feedback_delta,
         "matched_priorities": matched,
         "reasons": reasons,
+    }
+
+
+def _experience_payload(
+    profile: Profile,
+    today: dict[str, Any] | None,
+    feedback: PreferenceFeedback,
+) -> dict[str, Any]:
+    if today is None:
+        return {
+            "headline": "You're clear for now.",
+            "message": "There is no active mission competing for your attention.",
+            "primary_action": None,
+            "quick_actions": [],
+            "learning": {
+                "active": feedback.events > 0,
+                "signal_count": feedback.events,
+                "message": "Lumen adapts quietly as you use it.",
+            },
+        }
+
+    progress = today.get("progress")
+    completed = progress.get("completed", 0) if isinstance(progress, dict) else 0
+    total = progress.get("total", 0) if isinstance(progress, dict) else 0
+    primary_label = "Continue" if completed else "Start"
+
+    return {
+        "headline": f"One useful thing, {profile.display_name}.",
+        "message": today["title"],
+        "primary_action": {
+            "action": "continue",
+            "label": primary_label,
+            "mission_id": today["mission_id"],
+            "progress_label": f"{completed}/{total}" if total else None,
+        },
+        "quick_actions": [
+            {
+                "action": "more_like_this",
+                "label": "More like this",
+                "mission_id": today["mission_id"],
+            },
+            {
+                "action": "not_now",
+                "label": "Not now",
+                "mission_id": today["mission_id"],
+            },
+            {
+                "action": "less_like_this",
+                "label": "Less like this",
+                "mission_id": today["mission_id"],
+            },
+        ],
+        "learning": {
+            "active": feedback.events > 0,
+            "signal_count": feedback.events,
+            "message": (
+                "Lumen is already adapting to what you actually do."
+                if feedback.events
+                else "No tuning required — your choices will personalize Lumen over time."
+            ),
+        },
     }
 
 
@@ -174,26 +231,41 @@ class LumenApplication:
         return {
             "schema_version": APP_SCHEMA_VERSION,
             "user": profile_payload(profile),
+            "experience": _experience_payload(profile, today, feedback),
             "today": today,
             "radar": radar,
-            "feedback": feedback.to_dict(),
+            "personalization": {
+                "adapting": feedback.events > 0,
+                "signal_count": feedback.events,
+            },
             "summary": {
                 "active_missions": len(active_missions),
                 "completed_steps": completed_steps,
                 "total_active_steps": total_steps,
-                "feedback_events": feedback.events,
             },
         }
 
-    def rate_mission(
+    def react_to_mission(
         self,
-        sentiment: str,
+        action: str,
         user_id: str | None = None,
         *,
         mission_id: str | None = None,
         top: int = 3,
     ) -> dict[str, Any]:
-        """Record explicit user preference feedback and return the updated dashboard."""
+        """Apply one low-friction preference action and return the refreshed dashboard."""
+        actions = {
+            "more_like_this": ("like", True),
+            "not_now": ("dislike", False),
+            "less_like_this": ("dislike", True),
+        }
+        action_key = action.strip().casefold()
+        try:
+            sentiment, include_tags = actions[action_key]
+        except KeyError as exc:
+            allowed = ", ".join(sorted(actions))
+            raise ValueError(f"mission action must be one of: {allowed}") from exc
+
         workspace = self.workspace(user_id)
         profile = load_profile(workspace.profile_path)
         missions = load_missions(workspace.missions_path)
@@ -209,8 +281,31 @@ class LumenApplication:
             mission_id=mission.id,
             tags=mission.tags,
             sentiment=sentiment,
+            include_tags=include_tags,
         )
         return self.dashboard(workspace.user_id, top=top)
+
+    def rate_mission(
+        self,
+        sentiment: str,
+        user_id: str | None = None,
+        *,
+        mission_id: str | None = None,
+        top: int = 3,
+    ) -> dict[str, Any]:
+        """Compatibility API for explicit like/dislike feedback."""
+        mapping = {"like": "more_like_this", "dislike": "less_like_this"}
+        key = sentiment.strip().casefold()
+        try:
+            action = mapping[key]
+        except KeyError as exc:
+            raise ValueError("feedback sentiment must be one of: dislike, like") from exc
+        return self.react_to_mission(
+            action,
+            user_id,
+            mission_id=mission_id,
+            top=top,
+        )
 
     def complete_step(
         self,
@@ -231,12 +326,22 @@ class LumenApplication:
             feedback=feedback,
         )
         template = template_for(templates, mission.id)
+        before = load_progress(workspace.work_progress_path)
+        was_complete = len(before.get(mission.id, [])) == len(template.steps)
         progress = mark_step_done(
             workspace.work_progress_path,
             mission.id,
             step_number,
             len(template.steps),
         )
+        is_complete = len(progress.get(mission.id, [])) == len(template.steps)
+        if is_complete and not was_complete:
+            feedback = record_feedback(
+                workspace.feedback_path,
+                mission_id=mission.id,
+                tags=mission.tags,
+                sentiment="like",
+            )
         snapshot = session_snapshot(mission, template, progress, profile, feedback)
         snapshot["selection"] = _selection_explanation(
             mission,
