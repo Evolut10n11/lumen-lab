@@ -29,13 +29,17 @@ def _initialize(root: Path, user_id: str, priority: str, interest: str) -> UserW
 def test_bootstrap_routes_new_user_to_onboarding(tmp_path: Path) -> None:
     payload = LumenApplication(tmp_path).bootstrap("alice")
 
-    assert payload == {
-        "schema_version": APP_SCHEMA_VERSION,
-        "selected_user_id": "alice",
-        "initialized": False,
-        "users": [],
-        "dashboard": None,
-    }
+    assert payload["schema_version"] == APP_SCHEMA_VERSION
+    assert payload["selected_user_id"] == "alice"
+    assert payload["initialized"] is False
+    assert payload["users"] == []
+    assert payload["dashboard"] is None
+    assert payload["onboarding"]["mode"] == "quick"
+    assert payload["onboarding"]["submit_label"] == "Start with Lumen"
+    assert [field["name"] for field in payload["onboarding"]["fields"]] == [
+        "display_name",
+        "goals",
+    ]
 
 
 def test_bootstrap_lists_users_and_embeds_selected_dashboard(tmp_path: Path) -> None:
@@ -48,6 +52,7 @@ def test_bootstrap_lists_users_and_embeds_selected_dashboard(tmp_path: Path) -> 
     assert payload["schema_version"] == APP_SCHEMA_VERSION
     assert payload["selected_user_id"] == "bob"
     assert payload["initialized"] is True
+    assert payload["onboarding"] is None
     assert payload["users"] == [
         {"id": "alice", "display_name": "Alice"},
         {"id": "bob", "display_name": "Bob"},
