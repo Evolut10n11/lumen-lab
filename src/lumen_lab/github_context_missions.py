@@ -58,9 +58,11 @@ def github_context_mission(profile: Profile, snapshot: dict[str, Any]) -> Missio
 
     priority_name, priority_weight = priority
     project_name = active_project.rsplit("/", 1)[-1]
-    digest = hashlib.sha256(
-        f"{profile.id}:github:{active_project.casefold()}".encode()
-    ).hexdigest()[:10]
+    digest_source = (
+        f"{profile.id}:github:{active_project.casefold()}:"
+        f"{normalized_label(priority_name)}"
+    )
+    digest = hashlib.sha256(digest_source.encode()).hexdigest()[:10]
     language_note = f" Its primary language is {primary_language}." if primary_language else ""
 
     mission = Mission(
@@ -149,14 +151,21 @@ def _write_templates(workspace: UserWorkspace, templates: list[WorkSessionTempla
     )
 
 
-def _clear_github_progress(workspace: UserWorkspace) -> None:
+def _clear_github_progress(
+    workspace: UserWorkspace,
+    *,
+    keep_mission_id: str | None = None,
+) -> None:
     if not workspace.work_progress_path.exists():
         return
     progress = load_progress(workspace.work_progress_path)
     filtered = {
         mission_id: completed
         for mission_id, completed in progress.items()
-        if not mission_id.startswith(GITHUB_CONTEXT_MISSION_PREFIX)
+        if (
+            not mission_id.startswith(GITHUB_CONTEXT_MISSION_PREFIX)
+            or mission_id == keep_mission_id
+        )
     }
     if filtered == progress:
         return
@@ -208,13 +217,17 @@ def reconcile_github_context_mission(
         for template in templates
         if not template.mission_id.startswith(GITHUB_CONTEXT_MISSION_PREFIX)
     ]
-    _clear_github_progress(workspace)
 
     mission = github_context_mission(profile, snapshot)
     if mission is None:
+        _clear_github_progress(workspace)
         _write_missions(workspace, base_missions)
         _write_templates(workspace, base_templates)
         return None
+
+    existing_ids = {item.id for item in missions}
+    keep_progress = mission.id if mission.id in existing_ids else None
+    _clear_github_progress(workspace, keep_mission_id=keep_progress)
 
     priority = _primary_priority(profile)
     assert priority is not None
