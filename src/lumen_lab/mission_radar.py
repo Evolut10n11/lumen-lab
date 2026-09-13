@@ -24,7 +24,7 @@ class Mission:
     status: str = "active"
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "Mission":
+    def from_dict(cls, raw: dict[str, Any]) -> Mission:
         expected = {
             "id",
             "title",
