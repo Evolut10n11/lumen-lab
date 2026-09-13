@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Iterable
+from collections.abc import Iterable
 
 from .mission_radar import Mission
 from .profile import CandidateGenerationPolicy, Profile, normalized_label
