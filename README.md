@@ -114,6 +114,8 @@ Connect GitHub
 
 Connections must remain optional. A user should be able to use Lumen locally without connecting an external account.
 
+See [GitHub user context](docs/github-user-context.md).
+
 ## Privacy and trust model
 
 Personalization only works if the user can trust what is happening.
