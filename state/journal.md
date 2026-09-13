@@ -66,3 +66,13 @@ Expected score: 7.60. Observed score: 8.30. Calibration error: 0.70. Seven-outco
 
 The only remaining backlog item is now `exp-007` sandbox capability manifests with score 6.95.
 
+## 2026-09-13 — exp-007 completed
+
+Implemented named capability manifests as a deterministic audit layer over the existing constrained subprocess runner. Manifests reuse the same bare-executable validation, carry bounded timeout/output policy, can be listed without execution, and cannot be mixed with manual allowlist or limit overrides. The original `lumen sandbox --allow ...` path remains available for explicit one-off runs.
+
+The repository now includes a conservative `python-basic` example and tests for duplicate names, path-like executable rejection, missing profiles, deterministic listing, manual/manifest conflicts, and real manifest-backed execution. Manifests remain convenience and policy objects rather than an OS security boundary.
+
+Expected score: 6.95. Observed score: 8.00. Calibration error: 1.05. Eight-outcome calibration MAE: 1.08.
+
+All eight recorded experiments still landed above their predicted scores, so the systematic-underprediction signal remains. The current validated backlog is now empty; the next planning cycle should define a third generation of measured experiments rather than silently broadening capabilities.
+
