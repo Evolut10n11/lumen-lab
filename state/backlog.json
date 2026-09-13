@@ -86,5 +86,16 @@
     "novelty": 6,
     "risk": 1,
     "status": "done"
+  },
+  {
+    "id": "exp-009",
+    "title": "Planner ranking quality checkpoint",
+    "hypothesis": "Despite systematic underprediction of absolute outcome scores, the deterministic planner still orders experiments usefully enough to keep the relative feature weights unchanged.",
+    "impact": 9,
+    "learning": 10,
+    "feasibility": 9,
+    "novelty": 7,
+    "risk": 1,
+    "status": "done"
   }
 ]

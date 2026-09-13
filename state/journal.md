@@ -76,3 +76,13 @@ Expected score: 6.95. Observed score: 8.00. Calibration error: 1.05. Eight-outco
 
 All eight recorded experiments still landed above their predicted scores, so the systematic-underprediction signal remains. The current validated backlog is now empty; the next planning cycle should define a third generation of measured experiments rather than silently broadening capabilities.
 
+## 2026-09-13 — exp-009 completed
+
+Implemented a deterministic planner ranking-quality checkpoint that evaluates expected versus observed ordering pair by pair while excluding ties from the accuracy denominator. The `lumen-rankcheck` command reports concordant, discordant, comparable, and tied pairs alongside absolute calibration metrics so ranking quality is not confused with score calibration.
+
+Across the first eight outcomes, 21 pairs are comparable: 16 concordant and 5 discordant, with 7 observed-score ties. Pairwise ordering accuracy is 76.19%, which meets the fixed `ranking-supported` threshold. This supports keeping relative planner weights unchanged even though absolute predictions remain systematically low.
+
+Expected score: 8.75. Observed score: 9.00. Calibration error: 0.25. Nine-outcome calibration MAE: 0.99.
+
+The result strengthens the case for treating current bias as an absolute-scale problem rather than immediately retuning feature coefficients. Future planner work should investigate an intercept or scale correction separately from ranking weights.
+
