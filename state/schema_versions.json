@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "files": {
+    "backlog.json": 1,
+    "calibration_baseline.json": 1,
+    "candidates.json": 1,
+    "capabilities.json": 1,
+    "missions.json": 1,
+    "outcomes.json": 1,
+    "profile.json": 1,
+    "provenance.json": 1,
+    "work_sessions.json": 1
+  }
+}
