@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-from collections.abc import Iterable
-
 from .models import Experiment
 
 
@@ -48,16 +44,15 @@ _CURATED_NEXT_GENERATION = (
 )
 
 
-def has_pending_work(experiments: Iterable[Experiment]) -> bool:
+def has_pending_work(experiments: list[Experiment]) -> bool:
     return any(item.status in {"backlog", "active"} for item in experiments)
 
 
-def replenishment_candidates(experiments: Iterable[Experiment]) -> list[Experiment]:
-    existing = list(experiments)
-    if has_pending_work(existing):
+def replenishment_candidates(experiments: list[Experiment]) -> list[Experiment]:
+    if has_pending_work(experiments):
         return []
 
-    existing_ids = {item.id for item in existing}
+    existing_ids = {item.id for item in experiments}
     candidates: list[Experiment] = []
     for template in _CURATED_NEXT_GENERATION:
         if template.id in existing_ids:
@@ -69,8 +64,7 @@ def replenishment_candidates(experiments: Iterable[Experiment]) -> list[Experime
 
 
 def apply_replenishment(
-    experiments: Iterable[Experiment],
+    experiments: list[Experiment],
 ) -> tuple[list[Experiment], list[Experiment]]:
-    existing = list(experiments)
-    candidates = replenishment_candidates(existing)
-    return existing + candidates, candidates
+    candidates = replenishment_candidates(experiments)
+    return list(experiments) + candidates, candidates
