@@ -4,7 +4,9 @@
     "active": true,
     "targets": ["nsis"],
     "icon": ["icons/icon.png"],
-    "resources": ["resources/"],
+    "resources": {
+      "resources/lumen-engine.exe": "lumen-engine.exe"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser"
