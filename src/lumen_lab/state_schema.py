@@ -43,9 +43,11 @@ class SchemaManifest:
         if isinstance(self.manifest_version, bool) or not isinstance(self.manifest_version, int):
             raise ValueError("manifest_version must be an integer")
         if self.manifest_version != MANIFEST_VERSION:
-            raise ValueError(
-                f"unsupported manifest_version {self.manifest_version}; supported: {MANIFEST_VERSION}"
+            message = (
+                f"unsupported manifest_version {self.manifest_version}; "
+                f"supported: {MANIFEST_VERSION}"
             )
+            raise ValueError(message)
         if not isinstance(self.files, dict):
             raise ValueError("schema manifest files must be a JSON object")
 
