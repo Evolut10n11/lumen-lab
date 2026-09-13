@@ -56,3 +56,13 @@ Expected score: 7.85. Observed score: 8.60. Calibration error: 0.75. Six-outcome
 
 No planner coefficient was changed. The highest remaining backlog item is now `exp-008` journal synthesis snapshot with score 7.60, ahead of `exp-007` sandbox capability manifests at 6.95.
 
+## 2026-09-13 — exp-008 completed
+
+Implemented a deterministic synthesis snapshot over structured experiment state, recorded outcomes, and journal section metadata. The new `lumen-synthesize` command previews by default and requires `--write` to create or replace only `state/SYNTHESIS.md`; it never rewrites the append-only journal. Repeated lesson signals require support from at least two recorded outcome summaries and always expose their supporting experiment IDs.
+
+The first synthesis surfaces repeated themes around deterministic controls, explicit safety boundaries, and tests/documentation while preserving provenance instead of turning the generated snapshot into a new source of truth. Missing capabilities come only from the validated ranked backlog, so synthesis does not invent autonomous work.
+
+Expected score: 7.60. Observed score: 8.30. Calibration error: 0.70. Seven-outcome calibration MAE: 1.09.
+
+The only remaining backlog item is now `exp-007` sandbox capability manifests with score 6.95.
+
