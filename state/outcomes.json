@@ -89,5 +89,12 @@
     "observed_value": 9,
     "learning_value": 10,
     "result": "Implemented Elaine Mission Radar as Lumen's first explicitly user-facing decision aid: repository-owned missions, strict schema validation, deterministic value/urgency/leverage/momentum/effort/risk ranking, a concrete next-action CLI, JSON output, completed/paused filtering, read-only guarantees, tests, and documentation with no network, model, secret, or automatic execution dependency."
+  },
+  {
+    "experiment_id": "exp-017",
+    "expected_score": 8.45,
+    "observed_value": 9,
+    "learning_value": 9,
+    "result": "Implemented deterministic Elaine focused work sessions with reviewed mission templates, bounded focus windows, ordered checklists, Definition of Done, explicit local-only progress updates, a safety boundary that prevents task execution, JSON output, tests, and documentation."
   }
 ]
