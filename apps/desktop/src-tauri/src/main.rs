@@ -47,6 +47,14 @@ fn lumen_request(app: tauri::AppHandle, request: String) -> Result<String, Strin
         .map_err(|error| format!("could not create app data directory: {error}"))?;
 
     let (mut command, engine_label) = engine_command(&app)?;
+
+    // The desktop bridge speaks JSON over stdio. On Windows, Python can otherwise
+    // inherit the active ANSI code page (for example Windows-1251), while Tauri
+    // expects UTF-8. Force a stable encoding in both development and bundled builds.
+    command
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PYTHONUTF8", "1");
+
     let mut child = command
         .current_dir(&data_dir)
         .stdin(Stdio::piped())
