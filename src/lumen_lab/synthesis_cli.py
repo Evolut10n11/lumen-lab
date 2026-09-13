@@ -7,7 +7,11 @@ from .synthesis import render_synthesis
 
 def run(write: bool = False) -> int:
     store = LabStore(Path.cwd())
-    journal_before = store.journal_path.read_text(encoding="utf-8") if store.journal_path.exists() else ""
+    journal_before = (
+        store.journal_path.read_text(encoding="utf-8")
+        if store.journal_path.exists()
+        else ""
+    )
     content = render_synthesis(store.load(), store.load_outcomes(), journal_before)
     if write:
         store.state_dir.mkdir(parents=True, exist_ok=True)
