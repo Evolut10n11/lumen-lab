@@ -155,7 +155,8 @@ def evidence_index(
 def validate_evidence(proposal: Proposal, allowed: set[str]) -> None:
     unknown = sorted(set(proposal.evidence) - allowed)
     if unknown:
-        raise ValueError(f"proposal {proposal.id} references unknown evidence: {', '.join(unknown)}")
+        detail = ", ".join(unknown)
+        raise ValueError(f"proposal {proposal.id} references unknown evidence: {detail}")
 
 
 def _existing_titles(experiments: list[Experiment]) -> set[str]:
@@ -319,7 +320,9 @@ class OpenAICompatibleProposalGenerator:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a conservative proposal generator with no execution authority.",
+                    "content": (
+                        "You are a conservative proposal generator with no execution authority."
+                    ),
                 },
                 {"role": "user", "content": f"{instructions}\n\n{json.dumps(prompt)}"},
             ],
@@ -328,7 +331,8 @@ class OpenAICompatibleProposalGenerator:
         headers = {"Content-Type": "application/json"}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        parsed = _parse_json(_extract_content(self.transport(self.endpoint, payload, headers, self.timeout)))
+        response = self.transport(self.endpoint, payload, headers, self.timeout)
+        parsed = _parse_json(_extract_content(response))
         raw_items = parsed.get("proposals")
         if not isinstance(raw_items, list):
             raise ValueError("model response proposals must be a JSON list")
