@@ -1,5 +1,4 @@
-from lumen_lab.calibration import analyze_calibration, residual
-from lumen_lab.ledger import Outcome
+from lumen_lab.ledger import Outcome, analyze_calibration, residual
 
 
 def outcome(identifier: str, expected: float, observed: int, learning: int) -> Outcome:
