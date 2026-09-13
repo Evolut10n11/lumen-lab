@@ -116,3 +116,13 @@ Expected score: 8.45. Observed score: 9.00. Calibration error: 0.55. Twelve-outc
 
 Against the frozen `+0.94` baseline, `exp-012` is the second true holdout: raw error 0.55 becomes 0.39. Across both holdouts the raw MAE is 0.55 and corrected MAE is 0.39, still a 29.09% improvement without refitting. The baseline remains frozen, and the new registry has replenished three pending experiments for the next autonomous cycles.
 
+## 2026-09-13 — exp-013 completed
+
+Implemented a deterministic read-only state integrity doctor. `lumen-doctor` checks unique backlog and outcome IDs, experiment/outcome lifecycle links, the declarative candidate registry, frozen calibration-baseline membership, holdout evaluation, and exact synthesis freshness. Diagnostics have a stable order, failures return a non-zero exit status, and the doctor never creates, rewrites, or repairs state.
+
+The test suite now covers healthy state without writes, duplicate IDs, orphan and non-done outcomes, completed experiments without outcomes, malformed registries, invalid baseline membership, stale synthesis, and deterministic check order.
+
+Expected score: 7.85. Observed score: 8.60. Calibration error: 0.75. Thirteen-outcome calibration MAE: 0.87.
+
+Against the frozen `+0.94` baseline, `exp-013` is the third forward holdout: raw error 0.75 becomes 0.19. Across the three holdouts raw MAE is 0.62 and corrected MAE is 0.32, a 48.39% improvement without refitting. The baseline remains frozen. The remaining planner-ranked backlog is `exp-015` followed by `exp-014`.
+
