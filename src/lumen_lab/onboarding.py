@@ -24,6 +24,120 @@ _PREFIXES = (
 )
 _GOAL_PREFIX_RE = re.compile(rf"^(?:{'|'.join(_PREFIXES)})", re.IGNORECASE)
 
+_VAGUE_GOAL_MARKERS = (
+    "стало лучше",
+    "всё стало лучше",
+    "все стало лучше",
+    "наладить жизнь",
+    "разобраться в жизни",
+    "что-то изменить",
+    "что то изменить",
+    "better",
+    "improve things",
+    "improve my life",
+    "figure things out",
+)
+
+_CONTEXT_THEMES: tuple[tuple[str, tuple[str, ...], str, str], ...] = (
+    (
+        "career",
+        (
+            "собесед",
+            "ваканс",
+            "резюме",
+            "карьер",
+            "разработ",
+            "программист",
+            "инженер",
+            "interview",
+            "vacancy",
+            "resume",
+            "career",
+            "developer",
+            "engineer",
+        ),
+        "карьерная подготовка и доказательства навыков",
+        "career preparation and visible proof of skill",
+    ),
+    (
+        "study",
+        (
+            "универ",
+            "сесс",
+            "экзам",
+            "диплом",
+            "курсов",
+            "учусь",
+            "university",
+            "study",
+            "exam",
+            "thesis",
+            "coursework",
+        ),
+        "ближайший учебный дедлайн",
+        "the nearest study deadline",
+    ),
+    (
+        "project",
+        (
+            "pet project",
+            "side project",
+            "проект",
+            "стартап",
+            "продукт",
+            "запуск",
+            "project",
+            "startup",
+            "product",
+            "launch",
+            "ship",
+        ),
+        "один пользовательский результат в текущем проекте",
+        "one user-visible outcome in the current project",
+    ),
+    (
+        "creative",
+        (
+            "рис",
+            "иллюстрац",
+            "публиков",
+            "творч",
+            "контент",
+            "блог",
+            "музык",
+            "draw",
+            "illustr",
+            "publish",
+            "creative",
+            "content",
+            "art",
+            "music",
+        ),
+        "публикация одной законченной творческой работы",
+        "publishing one finished creative piece",
+    ),
+    (
+        "routine",
+        (
+            "режим",
+            "сон",
+            "энерг",
+            "бодр",
+            "двига",
+            "спорт",
+            "устал",
+            "routine",
+            "sleep",
+            "energy",
+            "exercise",
+            "movement",
+            "tired",
+        ),
+        "небольшой устойчивый эксперимент с режимом",
+        "a small sustainable routine experiment",
+    ),
+)
+
 
 def _clean_answer(value: str, name: str, *, required: bool = True) -> str:
     if not isinstance(value, str):
@@ -43,12 +157,46 @@ def _validated_focus_minutes(value: int) -> int:
     return value
 
 
+def _looks_russian(value: str) -> bool:
+    return bool(re.search(r"[А-Яа-яЁё]", value))
+
+
+def _is_vague_goal(value: str) -> bool:
+    normalized = normalized_label(value)
+    words = normalized.split()
+    if len(words) > 7:
+        return False
+    return any(marker in normalized for marker in _VAGUE_GOAL_MARKERS)
+
+
+def _context_theme(context: str, primary_goal: str) -> str | None:
+    combined = f"{context} {primary_goal}".casefold()
+    russian = _looks_russian(combined)
+    best: tuple[int, str, str] | None = None
+    for _name, keywords, russian_label, english_label in _CONTEXT_THEMES:
+        score = sum(1 for keyword in keywords if keyword in combined)
+        if score <= 0:
+            continue
+        candidate = (score, russian_label, english_label)
+        if best is None or candidate[0] > best[0]:
+            best = candidate
+    if best is None:
+        return None
+    return best[1] if russian else best[2]
+
+
 def goal_label(value: str) -> str:
     """Turn a normal first-person answer into a concise goal label when possible."""
     cleaned = _clean_answer(value, "desired_change")
     label = _GOAL_PREFIX_RE.sub("", cleaned, count=1).strip(" .,!?:;\"'“”«»")
     if not label:
         label = cleaned
+    if _is_vague_goal(label):
+        return (
+            "Уточнить, что именно должно измениться"
+            if _looks_russian(cleaned)
+            else "Clarify what should actually change"
+        )
     if label and label[0].islower():
         label = label[0].upper() + label[1:]
     return label
@@ -68,9 +216,10 @@ def guided_profile_inputs(
     focus_minutes = _validated_focus_minutes(focus_minutes)
 
     primary_goal = goal_label(change)
+    theme = _context_theme(context, primary_goal)
     interests: tuple[str, ...] = ()
-    if normalized_label(context) != normalized_label(primary_goal):
-        interests = (context,)
+    if theme and normalized_label(theme) != normalized_label(primary_goal):
+        interests = (theme,)
 
     return {
         "priorities": {primary_goal: 10},
