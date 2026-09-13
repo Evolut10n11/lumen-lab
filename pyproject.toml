@@ -33,6 +33,7 @@ lumen-provenance = "lumen_lab.provenance_cli:main"
 lumen-propose = "lumen_lab.proposal_cli:main"
 lumen-schema = "lumen_lab.state_schema_cli:main"
 lumen-user = "lumen_lab.user_cli:main"
+lumen-dashboard = "lumen_lab.app_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
