@@ -9,8 +9,16 @@ on:
       - "pyproject.toml"
       - ".github/workflows/windows-installer.yml"
   push:
+    branches:
+      - "main"
     tags:
       - "v*"
+    paths:
+      - "apps/desktop/**"
+      - "src/lumen_lab/**"
+      - "packaging/**"
+      - "pyproject.toml"
+      - ".github/workflows/windows-installer.yml"
   workflow_dispatch:
 
 permissions:
