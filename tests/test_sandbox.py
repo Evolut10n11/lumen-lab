@@ -5,7 +5,6 @@ import pytest
 
 from lumen_lab.sandbox import SandboxError, run_sandboxed
 
-
 PYTHON = pathlib.Path(sys.executable).name
 
 
