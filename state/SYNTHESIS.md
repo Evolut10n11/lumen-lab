@@ -16,7 +16,7 @@ It does not use a model, network service, or secret, and it does not modify the 
 ## Repeated lesson signals
 
 - `deterministic-controls` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-013`
-- `safety-boundaries` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-005`, `exp-007`
+- `safety-boundaries` — supported by `exp-001`, `exp-002`, `exp-004`, `exp-007`
 - `tests-and-documentation` — supported by `exp-001`, `exp-002`, `exp-003`, `exp-004`, `exp-005`, `exp-006`, `exp-007`, `exp-008`, `exp-009`, `exp-010`, `exp-011`, `exp-012`, `exp-013`
 
 ## Missing capabilities
