@@ -173,7 +173,11 @@ def _existing_focus_minutes(context: dict[str, Any] | None) -> int:
     answers = context.get("answers")
     if isinstance(answers, dict):
         value = answers.get("focus_minutes")
-        if isinstance(value, int) and not isinstance(value, bool) and value in ALLOWED_FOCUS_MINUTES:
+        if (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value in ALLOWED_FOCUS_MINUTES
+        ):
             return value
     return 30
 
