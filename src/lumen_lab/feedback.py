@@ -111,6 +111,7 @@ def record_feedback(
     mission_id: str,
     tags: Iterable[str],
     sentiment: str,
+    include_tags: bool = True,
 ) -> PreferenceFeedback:
     mission_key = mission_id.strip()
     if not mission_key:
@@ -126,13 +127,14 @@ def record_feedback(
     feedback = load_feedback(path)
     missions = _updated_score(feedback.missions, mission_key, delta)
     tag_scores = dict(feedback.tags)
-    seen: set[str] = set()
-    for raw_tag in tags:
-        tag = normalized_label(raw_tag)
-        if not tag or tag in seen:
-            continue
-        seen.add(tag)
-        tag_scores = _updated_score(tag_scores, tag, delta)
+    if include_tags:
+        seen: set[str] = set()
+        for raw_tag in tags:
+            tag = normalized_label(raw_tag)
+            if not tag or tag in seen:
+                continue
+            seen.add(tag)
+            tag_scores = _updated_score(tag_scores, tag, delta)
 
     updated = PreferenceFeedback(
         events=feedback.events + 1,
