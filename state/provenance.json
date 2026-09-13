@@ -21,7 +21,7 @@
   },
   {
     "experiment_id": "exp-006",
-    "artifacts": ["src/lumen_lab/calibration.py", "docs/calibration.md"]
+    "artifacts": ["src/lumen_lab/calibration_cli.py", "docs/calibration.md"]
   },
   {
     "experiment_id": "exp-007",
