@@ -74,6 +74,8 @@ It currently includes:
 - low-friction preference feedback;
 - adaptive hypotheses with confidence;
 - clarification prompts when behavior contradicts the current model;
+- opt-in public GitHub context with preview-before-save;
+- refresh and disconnect controls for GitHub-derived context;
 - Activity and Profile views;
 - persistence across application restarts.
 
@@ -99,20 +101,25 @@ See [Desktop application](docs/desktop-app.md).
 
 ## Optional context connections
 
-The next product layer is opt-in context from services the user already uses.
+GitHub is Lumen's first implemented external context source.
 
-GitHub is the first planned connection. With explicit permission, Lumen can use project activity as evidence about what a person is actually working on instead of relying only on what they typed during onboarding.
-
-The intended experience is a normal application flow:
+The current version deliberately starts small and safe: a user can enter a GitHub username, preview the public context Lumen found, and explicitly choose **Use this context** before anything is saved. No GitHub token is required or stored for this public-data flow.
 
 ```text
-Connect GitHub
-→ authorize in browser
-→ return to Lumen
-→ choose what Lumen may use
+Profile → Connections
+→ enter GitHub username
+→ Preview
+→ inspect repositories and language signals
+→ Use this context
 ```
 
-Connections must remain optional. A user should be able to use Lumen locally without connecting an external account.
+Once confirmed, GitHub activity becomes low-confidence evidence beside the user's own answers. It can help Lumen notice an active project or common language, but it does not silently overwrite what the user explicitly said.
+
+The user can refresh the snapshot or disconnect GitHub at any time. Disconnecting also removes GitHub-derived hypotheses from the local context model.
+
+Authenticated browser authorization for optional private-repository context is a later layer. It should not require personal-access-token copy/paste or CLI setup.
+
+Connections remain optional. Lumen must stay useful without connecting an external account.
 
 See [GitHub user context](docs/github-user-context.md).
 
@@ -124,7 +131,7 @@ Lumen therefore follows a few product rules:
 
 1. **Each user has isolated state.** One person's profile, progress, and feedback are never used as another person's defaults.
 2. **The first conversation is a hypothesis, not a permanent profile.** Behavior can revise it.
-3. **External services are opt-in.** Lumen should explain what a connection contributes before asking for access.
+3. **External services are opt-in.** Lumen explains what a connection contributes before saving it.
 4. **Local state is the default.** Personal runtime data lives outside repository-owned experiment state.
 5. **Recommendations are explainable.** The system keeps the evidence used to rank work.
 6. **Models are not authority.** Optional LLM components may help interpret or generate suggestions, but validated product state remains the source of truth.
@@ -136,18 +143,20 @@ A local user workspace lives under:
 .lumen/users/<user-id>/
 ```
 
-Typical state includes the user's profile, onboarding context, missions, progress, feedback, and later integration evidence. The `.lumen/` runtime directory is ignored by Git.
+Typical state includes the user's profile, onboarding context, missions, progress, feedback, and accepted integration evidence. The `.lumen/` runtime directory is ignored by Git.
 
 See [Personalization](docs/personalization.md) and [Profiles](docs/profiles.md).
 
 ## How Lumen decides what to show
 
-Lumen separates three things that are easy to accidentally mix together:
+Lumen separates evidence that is easy to accidentally mix together:
 
 ```text
 what the user explicitly told us
           +
 what their behavior suggests
+          +
+optional accepted external evidence
           +
 what candidate work is currently available
           ↓
@@ -181,7 +190,7 @@ flowchart LR
     TODAY --> WORK[Focused session]
     WORK --> FEEDBACK
 
-    EXT[Optional integrations\nGitHub, later others] -. user-authorized evidence .-> CONTEXT
+    EXT[Optional integrations\nGitHub, later others] -. accepted evidence .-> CONTEXT
 ```
 
 The GUI is intentionally thin. Core identity, personalization, ranking, progress, and state rules live behind `LumenApplication` so the product does not develop a second, contradictory personalization model in the frontend.
@@ -306,6 +315,7 @@ The important product loop now exists:
 ```text
 meet the user
 → form a starting understanding
+→ optionally accept outside context
 → recommend useful work
 → observe what actually happens
 → update confidence
@@ -315,11 +325,11 @@ meet the user
 
 The next major milestones are:
 
-- opt-in GitHub context;
-- packaging the Python engine into the desktop build;
+- package the Python engine into the desktop build;
 - Windows installer and release artifacts;
-- clearer integration/privacy controls;
+- authenticated GitHub access for optional private-repository context;
 - richer evidence-based recommendations;
+- clearer integration/privacy controls;
 - visual polish and final design alignment.
 
 The long-term goal is not to make Lumen maximally autonomous. It is to make it **personally useful with as little configuration as possible**, while keeping the user's data, choices, and trust boundaries understandable.
