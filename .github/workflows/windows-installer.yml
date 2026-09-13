@@ -65,7 +65,7 @@ jobs:
 
       - name: Generate Windows icon set
         working-directory: apps/desktop
-        run: npm run tauri icon src-tauri/icons/icon.png
+        run: npm run tauri icon src-tauri/icons/lumen.svg
 
       - name: Build Lumen Windows installer
         working-directory: apps/desktop
