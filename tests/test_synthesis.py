@@ -1,6 +1,8 @@
 from lumen_lab.ledger import Outcome
 from lumen_lab.models import Experiment
+from lumen_lab.store import LabStore
 from lumen_lab.synthesis import journal_section_count, render_synthesis, repeated_lesson_signals
+from lumen_lab.synthesis_cli import run
 
 
 def outcome(identifier: str, result: str) -> Outcome:
@@ -38,9 +40,8 @@ def test_repeated_signal_requires_two_distinct_outcomes() -> None:
 
     two = one + [outcome("exp-b", "Implemented tests for deterministic behavior.")]
     assert repeated_lesson_signals(two) == [
-        ("deterministic-controls", ["exp-b"]),
         ("tests-and-documentation", ["exp-a", "exp-b"]),
-    ][1:]
+    ]
 
 
 def test_render_synthesis_orders_completed_ids_and_ranked_backlog() -> None:
@@ -76,3 +77,16 @@ def test_snapshot_does_not_require_or_mutate_journal_text() -> None:
     before = journal
     render_synthesis([], [], journal)
     assert journal == before
+
+
+def test_write_creates_snapshot_without_rewriting_journal(tmp_path, monkeypatch) -> None:
+    store = LabStore(tmp_path)
+    store.save([experiment("exp-a", "Done", "done")])
+    store.save_outcomes([outcome("exp-a", "Implemented tests and documentation.")])
+    original = "# Lab Journal\n\n## Original\nKeep me intact.\n"
+    store.journal_path.write_text(original, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert run(write=True) == 0
+    assert (store.state_dir / "SYNTHESIS.md").exists()
+    assert store.journal_path.read_text(encoding="utf-8") == original
