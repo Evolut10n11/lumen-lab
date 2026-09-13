@@ -1,4 +1,4 @@
-from lumen_lab.branch_hygiene import PullRequestRef, cleanup_candidates
+from lumen_lab.branch_hygiene import GitHubApi, PullRequestRef, cleanup_candidates
 
 
 def pr(
@@ -96,3 +96,21 @@ def test_supersedes_reference_only_applies_from_a_merged_pr() -> None:
         branches=branches,
         pull_requests=pull_requests,
     ) == []
+
+
+def test_delete_branch_uses_ref_path_with_branch_slashes(monkeypatch) -> None:
+    api = GitHubApi("Evolut10n11/lumen-lab", "token")
+    calls: list[tuple[str, str]] = []
+
+    def fake_request(path: str, *, method: str = "GET") -> None:
+        calls.append((path, method))
+
+    monkeypatch.setattr(api, "_request", fake_request)
+    api.delete_branch("feat/example branch")
+
+    assert calls == [
+        (
+            "/repos/Evolut10n11/lumen-lab/git/refs/heads/feat/example%20branch",
+            "DELETE",
+        )
+    ]
