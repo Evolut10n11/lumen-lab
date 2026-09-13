@@ -19,7 +19,7 @@ from .work_session import (
 )
 from .workspace import UserWorkspace
 
-APP_SCHEMA_VERSION = 2
+APP_SCHEMA_VERSION = 3
 
 
 def _matched_priorities(mission: Mission, profile: Profile) -> list[dict[str, Any]]:
@@ -29,6 +29,26 @@ def _matched_priorities(mission: Mission, profile: Profile) -> list[dict[str, An
         if normalized_label(name) in mission_tags:
             matches.append({"name": name, "weight": weight})
     return sorted(matches, key=lambda item: (-item["weight"], normalized_label(item["name"])))
+
+
+def _quick_priorities(goals: Iterable[str]) -> dict[str, int]:
+    clean: list[str] = []
+    seen: set[str] = set()
+    for raw in goals:
+        value = raw.strip()
+        key = normalized_label(value)
+        if not value or key in seen:
+            continue
+        seen.add(key)
+        clean.append(value)
+
+    if not clean:
+        raise ValueError("quick onboarding needs at least one goal")
+    if len(clean) > 5:
+        raise ValueError("quick onboarding supports at most five goals")
+
+    weights = (10, 8, 7, 6, 5)
+    return {goal: weights[index] for index, goal in enumerate(clean)}
 
 
 def _selection_explanation(
@@ -130,6 +150,31 @@ def _experience_payload(
     }
 
 
+def _onboarding_payload() -> dict[str, Any]:
+    return {
+        "mode": "quick",
+        "headline": "What do you want to move forward?",
+        "message": "Give Lumen one to five goals. You can refine the rest later.",
+        "fields": [
+            {
+                "name": "display_name",
+                "kind": "text",
+                "label": "What should Lumen call you?",
+                "required": True,
+            },
+            {
+                "name": "goals",
+                "kind": "list",
+                "label": "What matters most right now?",
+                "required": True,
+                "min_items": 1,
+                "max_items": 5,
+            },
+        ],
+        "submit_label": "Start with Lumen",
+    }
+
+
 @dataclass(slots=True)
 class LumenApplication:
     """User-scoped application facade shared by CLI, API, and future GUI clients."""
@@ -164,6 +209,22 @@ class LumenApplication:
         initialize_workspace(workspace, profile, replace=replace)
         return self.dashboard(workspace.user_id)
 
+    def quick_onboard(
+        self,
+        user_id: str,
+        *,
+        display_name: str,
+        goals: Iterable[str],
+        replace: bool = False,
+    ) -> dict[str, Any]:
+        """Create a useful profile from normal-language goals without tuning weights."""
+        return self.onboard(
+            user_id,
+            display_name=display_name,
+            priorities=_quick_priorities(goals),
+            replace=replace,
+        )
+
     def _users(self) -> list[dict[str, str]]:
         users_root = self.root / ".lumen" / "users"
         if not users_root.is_dir():
@@ -192,6 +253,7 @@ class LumenApplication:
             "selected_user_id": workspace.user_id,
             "initialized": initialized,
             "users": self._users(),
+            "onboarding": None if initialized else _onboarding_payload(),
             "dashboard": self.dashboard(workspace.user_id, top=top) if initialized else None,
         }
 
