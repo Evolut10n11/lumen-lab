@@ -2,7 +2,7 @@
 
 `LumenApplication` is the application-facing boundary between Lumen's domain logic and any client UI.
 
-The goal is to keep a future desktop or web interface thin. The UI should not reimplement mission ranking, user scoping, progress updates, or explanation logic. It should call this service and render the returned payloads.
+The goal is to keep a future desktop or web interface thin. The UI should not reimplement onboarding, mission ranking, user scoping, progress updates, or explanation logic. It should call this service and render the returned payloads.
 
 ## User boundary
 
@@ -14,13 +14,31 @@ Every call is resolved through `UserWorkspace` and therefore reads or writes onl
 
 If `user_id` is omitted, the same default-user resolution used by the CLI applies (`LUMEN_USER_ID`, then `default`).
 
-## Dashboard
+## Onboarding
+
+The app layer can create an isolated user directly from explicit inputs:
 
 ```python
 from pathlib import Path
 from lumen_lab.app_service import LumenApplication
 
 app = LumenApplication(Path.cwd())
+payload = app.onboard(
+    "alice",
+    display_name="Alice",
+    priorities={"career": 10, "health": 7},
+    interests=["robotics"],
+    skills=["python"],
+    constraints=["4 hours per week"],
+    risk_tolerance=4,
+)
+```
+
+`onboard()` creates the profile, starter missions, and work-session templates, then returns the user's first dashboard. Reusing an existing user id raises an error unless `replace=True` is passed explicitly. Replacement rebuilds that user's generated state and resets only that user's progress.
+
+## Dashboard
+
+```python
 payload = app.dashboard("alice")
 ```
 
@@ -43,7 +61,7 @@ Progress is written only to that user's workspace. Tests cover cross-user isolat
 
 ## CLI bridge
 
-The same service is available through:
+The same dashboard service is available through:
 
 ```text
 lumen-dashboard --user alice
@@ -57,7 +75,7 @@ The JSON mode is useful as a temporary integration surface while the GUI is bein
 
 The application client should remain presentation-focused:
 
-1. onboarding creates a user profile and workspace;
+1. onboarding calls `onboard()` with explicit user inputs;
 2. the home screen renders `dashboard()`;
 3. completing a step calls `complete_step()`;
 4. the UI renders the returned explanation rather than inventing its own ranking rationale.

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from lumen_lab.app_cli import main as dashboard_main
 from lumen_lab.app_service import LumenApplication
 from lumen_lab.personalization import build_profile, initialize_workspace
@@ -22,6 +24,51 @@ def _initialize(root: Path, user_id: str, priority: str, interest: str) -> UserW
     )
     initialize_workspace(workspace, profile)
     return workspace
+
+
+def test_onboard_creates_first_personalized_dashboard(tmp_path: Path) -> None:
+    app = LumenApplication(tmp_path)
+
+    payload = app.onboard(
+        "alice",
+        display_name="Alice",
+        priorities={"career": 10, "health": 7},
+        interests=["robotics"],
+        skills=["python"],
+        constraints=["4 hours per week"],
+        risk_tolerance=4,
+    )
+
+    assert payload["user"]["id"] == "alice"
+    assert payload["user"]["priorities"] == {"career": 10, "health": 7}
+    assert payload["today"]["profile_id"] == "alice"
+    assert "career" in payload["today"]["title"].casefold()
+    assert payload["summary"]["completed_steps"] == 0
+
+
+def test_onboard_requires_explicit_replace_for_existing_user(tmp_path: Path) -> None:
+    app = LumenApplication(tmp_path)
+    app.onboard("alice", display_name="Alice", priorities={"career": 10})
+
+    with pytest.raises(ValueError, match="already exists"):
+        app.onboard("alice", display_name="Alice", priorities={"health": 10})
+
+
+def test_onboard_replace_rebuilds_profile_and_resets_progress(tmp_path: Path) -> None:
+    app = LumenApplication(tmp_path)
+    app.onboard("alice", display_name="Alice", priorities={"career": 10})
+    app.complete_step(1, "alice")
+
+    payload = app.onboard(
+        "alice",
+        display_name="Alice",
+        priorities={"health": 10},
+        replace=True,
+    )
+
+    assert payload["user"]["priorities"] == {"health": 10}
+    assert "health" in payload["today"]["title"].casefold()
+    assert payload["summary"]["completed_steps"] == 0
 
 
 def test_dashboard_is_scoped_to_selected_user(tmp_path: Path) -> None:
