@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from .app_service import LumenApplication
+from .context_learning import (
+    answer_context_clarification,
+    clarification_for_context,
+    observe_context_signal,
+)
+from .feedback import load_feedback, record_feedback
+from .mission_radar import Mission, load_missions
 from .onboarding import (
     apply_focus_minutes,
     guided_profile_inputs,
@@ -22,16 +29,47 @@ def _payload(request: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _mission_by_id(app: LumenApplication, user_id: str | None, mission_id: str) -> Mission:
+    workspace = app.workspace(user_id)
+    for mission in load_missions(workspace.missions_path):
+        if mission.id == mission_id:
+            return mission
+    raise ValueError(f"unknown mission id: {mission_id}")
+
+
+def _selected_mission_id(
+    app: LumenApplication,
+    user_id: str | None,
+    mission_id: str | None,
+) -> str:
+    if mission_id:
+        return mission_id
+    dashboard = app.dashboard(user_id)
+    today = dashboard.get("today")
+    if not isinstance(today, dict) or not isinstance(today.get("mission_id"), str):
+        raise ValueError("no active mission is available")
+    return today["mission_id"]
+
+
+def _decorate_dashboard(
+    app: LumenApplication,
+    user_id: str | None,
+    dashboard: dict[str, Any],
+) -> dict[str, Any]:
+    workspace = app.workspace(user_id)
+    context = load_onboarding_context(workspace.onboarding_context_path)
+    dashboard["context"] = context
+    dashboard["clarification"] = clarification_for_context(context)
+    return dashboard
+
+
 def _dashboard_with_context(
     app: LumenApplication,
     user_id: str | None,
     *,
     top: int = 3,
 ) -> dict[str, Any]:
-    dashboard = app.dashboard(user_id, top=top)
-    workspace = app.workspace(user_id)
-    dashboard["context"] = load_onboarding_context(workspace.onboarding_context_path)
-    return dashboard
+    return _decorate_dashboard(app, user_id, app.dashboard(user_id, top=top))
 
 
 def dispatch(request: dict[str, Any]) -> dict[str, Any]:
@@ -57,7 +95,10 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         result = app.bootstrap(user_id, top=int(payload.get("top", 3)))
         if result["initialized"]:
             workspace = app.workspace(result["selected_user_id"])
-            result["context"] = load_onboarding_context(workspace.onboarding_context_path)
+            context = load_onboarding_context(workspace.onboarding_context_path)
+            result["context"] = context
+            if isinstance(result.get("dashboard"), dict):
+                _decorate_dashboard(app, result["selected_user_id"], result["dashboard"])
         else:
             result["context"] = None
         return result
@@ -133,11 +174,21 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("reaction must be a string")
         if mission_id is not None and not isinstance(mission_id, str):
             raise ValueError("mission_id must be a string or null")
+
+        target_id = _selected_mission_id(app, user_id, mission_id)
+        mission = _mission_by_id(app, user_id, target_id)
         app.react_to_mission(
             reaction,
             user_id,
-            mission_id=mission_id,
+            mission_id=target_id,
             top=int(payload.get("top", 3)),
+        )
+        workspace = app.workspace(user_id)
+        observe_context_signal(
+            workspace.onboarding_context_path,
+            mission_id=mission.id,
+            mission_tags=list(mission.tags),
+            signal=reaction,
         )
         return _dashboard_with_context(app, user_id, top=int(payload.get("top", 3)))
 
@@ -148,7 +199,65 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("step must be an integer")
         if mission_id is not None and not isinstance(mission_id, str):
             raise ValueError("mission_id must be a string or null")
-        return app.complete_step(step, user_id, mission_id=mission_id)
+
+        target_id = _selected_mission_id(app, user_id, mission_id)
+        mission = _mission_by_id(app, user_id, target_id)
+        workspace = app.workspace(user_id)
+        before_events = load_feedback(workspace.feedback_path).events
+        snapshot = app.complete_step(step, user_id, mission_id=target_id)
+        after_events = load_feedback(workspace.feedback_path).events
+        progress = snapshot.get("progress", {})
+        if (
+            after_events > before_events
+            and isinstance(progress, dict)
+            and progress.get("completed") == progress.get("total")
+        ):
+            observe_context_signal(
+                workspace.onboarding_context_path,
+                mission_id=mission.id,
+                mission_tags=list(mission.tags),
+                signal="mission_completed",
+            )
+        return snapshot
+
+    if action == "clarify_context":
+        clarification_id = payload.get("clarification_id")
+        choice = payload.get("choice")
+        if not isinstance(clarification_id, str) or not clarification_id.strip():
+            raise ValueError("clarification_id must be a non-empty string")
+        if not isinstance(choice, str) or not choice.strip():
+            raise ValueError("choice must be a non-empty string")
+
+        workspace = app.workspace(user_id)
+        _, effects = answer_context_clarification(
+            workspace.onboarding_context_path,
+            clarification_id=clarification_id,
+            choice=choice,
+        )
+        focus_minutes = effects.get("focus_minutes")
+        if isinstance(focus_minutes, int):
+            apply_focus_minutes(workspace.work_sessions_path, focus_minutes)
+
+        goal = effects.get("confirm_goal") or effects.get("deprioritize_goal")
+        if isinstance(goal, str) and goal.strip():
+            record_feedback(
+                workspace.feedback_path,
+                mission_id="context-primary-goal",
+                tags=[goal],
+                sentiment="like" if "confirm_goal" in effects else "dislike",
+            )
+
+        disliked_mission_id = effects.get("dislike_mission_id")
+        if isinstance(disliked_mission_id, str) and disliked_mission_id:
+            mission = _mission_by_id(app, user_id, disliked_mission_id)
+            record_feedback(
+                workspace.feedback_path,
+                mission_id=mission.id,
+                tags=mission.tags,
+                sentiment="dislike",
+            )
+
+        return _dashboard_with_context(app, user_id)
 
     raise ValueError(f"unsupported desktop action: {action}")
 
