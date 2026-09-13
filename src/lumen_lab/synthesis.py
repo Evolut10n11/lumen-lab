@@ -91,10 +91,16 @@ def render_synthesis(
             "",
             "## Interpretation limits",
             "",
-            "- Lesson signals are keyword rules over recorded outcome summaries, not semantic claims.",
+            (
+                "- Lesson signals are keyword rules over recorded outcome summaries, "
+                "not semantic claims."
+            ),
             "- A signal is shown only when at least two distinct outcomes support it.",
             "- Missing capabilities are the current ranked backlog, not generated recommendations.",
-            "- The journal remains the append-only narrative source; this file is a disposable view.",
+            (
+                "- The journal remains the append-only narrative source; this file is "
+                "a disposable view."
+            ),
             "",
         ]
     )
