@@ -14,13 +14,16 @@ import {
   X,
 } from "lucide-react";
 import GitHubConnection from "./GitHubConnection";
+import { copy, detectLocale, errorMessage, persistLocale } from "./i18n";
 import {
   answerClarification,
   bootstrap,
   completeStep,
   Dashboard,
   guidedOnboard,
+  Locale,
   reactToMission,
+  setRequestLocale,
 } from "./lib/lumen";
 
 type Screen = "home" | "mission" | "activity" | "profile";
@@ -35,7 +38,32 @@ const onboardingSteps: OnboardingStep[] = [
   "review",
 ];
 
-function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
+function LanguageToggle({ locale, onChange }: { locale: Locale; onChange: (locale: Locale) => void }) {
+  const t = copy(locale).language;
+  const next = locale === "ru" ? "en" : "ru";
+  return (
+    <button
+      className="text-button"
+      type="button"
+      onClick={() => onChange(next)}
+      title={t.current}
+      aria-label={`${t.current} → ${t.switchTo}`}
+    >
+      {t.switchTo}
+    </button>
+  );
+}
+
+function Onboarding({
+  locale,
+  onLocale,
+  onReady,
+}: {
+  locale: Locale;
+  onLocale: (locale: Locale) => void;
+  onReady: (dashboard: Dashboard) => void;
+}) {
+  const t = copy(locale).onboarding;
   const [stepIndex, setStepIndex] = useState(0);
   const [name, setName] = useState("");
   const [currentContext, setCurrentContext] = useState("");
@@ -83,7 +111,7 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
       });
       onReady(dashboard);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start Lumen.");
+      setError(errorMessage(err, t.startError));
     } finally {
       setBusy(false);
     }
@@ -101,76 +129,79 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
             <div className="brand-mark"><Sparkles size={18} /></div>
             <span>Lumen</span>
           </div>
-          <span className="onboarding-progress-label">A short conversation · {progress}%</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <LanguageToggle locale={locale} onChange={onLocale} />
+            <span className="onboarding-progress-label">{t.progress} · {progress}%</span>
+          </div>
         </div>
         <div className="onboarding-progress-track"><span style={{ width: `${progress}%` }} /></div>
 
         {step === "name" && (
           <div className="conversation-step">
-            <span className="eyebrow">First things first</span>
-            <h1>What should I call you?</h1>
-            <p>No profile setup screens. Just tell Lumen enough to make the first useful guess.</p>
+            <span className="eyebrow">{t.firstKicker}</span>
+            <h1>{t.nameTitle}</h1>
+            <p>{t.nameBody}</p>
             <input
               autoFocus
               className="conversation-input"
               value={name}
               onChange={(event) => setName(event.target.value)}
               onKeyDown={onEnter}
-              placeholder="Your name"
+              placeholder={t.namePlaceholder}
             />
           </div>
         )}
 
         {step === "context" && (
           <div className="conversation-step">
-            <span className="eyebrow">Your world right now</span>
-            <h1>What is taking most of your attention these days?</h1>
-            <p>Work, study, a project, family, a move — whatever is actually occupying your head.</p>
+            <span className="eyebrow">{t.contextKicker}</span>
+            <h1>{t.contextTitle}</h1>
+            <p>{t.contextBody}</p>
             <textarea
               autoFocus
               className="conversation-textarea"
               value={currentContext}
               onChange={(event) => setCurrentContext(event.target.value)}
-              placeholder="For example: I work full time, prepare for interviews and try to finish a side project..."
+              placeholder={t.contextPlaceholder}
             />
           </div>
         )}
 
         {step === "change" && (
           <div className="conversation-step">
-            <span className="eyebrow">Direction</span>
-            <h1>What would you most like to be different a month from now?</h1>
-            <p>Say it normally. Lumen will turn the answer into a starting direction, not a permanent setting.</p>
+            <span className="eyebrow">{t.changeKicker}</span>
+            <h1>{t.changeTitle}</h1>
+            <p>{t.changeBody}</p>
             <textarea
               autoFocus
               className="conversation-textarea"
               value={desiredChange}
               onChange={(event) => setDesiredChange(event.target.value)}
-              placeholder="For example: I want to get a stronger AI role and have a project I can proudly show..."
+              placeholder={t.changePlaceholder}
             />
           </div>
         )}
 
         {step === "friction" && (
           <div className="conversation-step">
-            <span className="eyebrow">What gets in the way</span>
-            <h1>What usually makes progress harder?</h1>
-            <p>This one is optional. It helps Lumen avoid giving advice that looks good but does not fit your life.</p>
+            <span className="eyebrow">{t.frictionKicker}</span>
+            <h1>{t.frictionTitle}</h1>
+            <p>{t.frictionBody}</p>
             <textarea
               autoFocus
               className="conversation-textarea"
               value={friction}
               onChange={(event) => setFriction(event.target.value)}
-              placeholder="Too little time, low energy after work, too many parallel goals..."
+              placeholder={t.frictionPlaceholder}
             />
           </div>
         )}
 
         {step === "focus" && (
           <div className="conversation-step">
-            <span className="eyebrow">Keep it realistic</span>
-            <h1>How much focused time feels reasonable on a normal day?</h1>
-            <p>This changes the size of the work Lumen gives you. You can change it later just by using the app.</p>
+            <span className="eyebrow">{t.focusKicker}</span>
+            <h1>{t.focusTitle}</h1>
+            <p>{t.focusBody}</p>
             <div className="focus-choice-grid">
               {([15, 30, 60] as const).map((minutes) => (
                 <button
@@ -178,8 +209,8 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
                   className={focusMinutes === minutes ? "focus-choice active" : "focus-choice"}
                   onClick={() => setFocusMinutes(minutes)}
                 >
-                  <strong>{minutes} min</strong>
-                  <span>{minutes === 15 ? "Small wins" : minutes === 30 ? "Steady progress" : "Deep focus"}</span>
+                  <strong>{minutes} {locale === "ru" ? "мин" : "min"}</strong>
+                  <span>{minutes === 15 ? t.smallWins : minutes === 30 ? t.steadyProgress : t.deepFocus}</span>
                 </button>
               ))}
             </div>
@@ -188,17 +219,14 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
 
         {step === "review" && (
           <div className="conversation-step review-step">
-            <span className="eyebrow">A starting hypothesis</span>
-            <h1>Here is what Lumen will start with.</h1>
-            <p>
-              This is not a locked profile. Lumen will change its understanding as your choices and completed work
-              provide better evidence.
-            </p>
+            <span className="eyebrow">{t.reviewKicker}</span>
+            <h1>{t.reviewTitle}</h1>
+            <p>{t.reviewBody}</p>
             <div className="context-review">
-              <div><span>Current context</span><strong>{currentContext}</strong></div>
-              <div><span>Direction</span><strong>{desiredChange}</strong></div>
-              {friction.trim() && <div><span>Friction</span><strong>{friction}</strong></div>}
-              <div><span>Focus window</span><strong>{focusMinutes} minutes</strong></div>
+              <div><span>{t.currentContext}</span><strong>{currentContext}</strong></div>
+              <div><span>{t.direction}</span><strong>{desiredChange}</strong></div>
+              {friction.trim() && <div><span>{t.friction}</span><strong>{friction}</strong></div>}
+              <div><span>{t.focusWindow}</span><strong>{focusMinutes} {t.minutes}</strong></div>
             </div>
           </div>
         )}
@@ -208,19 +236,19 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
         <div className="onboarding-navigation">
           {stepIndex > 0 ? (
             <button className="ghost-button" type="button" onClick={back} disabled={busy}>
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft size={16} /> {t.back}
             </button>
           ) : <span />}
 
           {step === "review" ? (
             <button className="primary-button" disabled={busy} onClick={submit}>
               {busy ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} />}
-              Build my starting point
+              {t.build}
               {!busy && <ArrowRight size={18} />}
             </button>
           ) : (
             <button className="primary-button" disabled={!canContinue || busy} onClick={next}>
-              {step === "friction" && !friction.trim() ? "Skip" : "Continue"}
+              {step === "friction" && !friction.trim() ? t.skip : t.continue}
               <ArrowRight size={18} />
             </button>
           )}
@@ -230,16 +258,18 @@ function Onboarding({ onReady }: { onReady: (dashboard: Dashboard) => void }) {
   );
 }
 
-function Sidebar({ screen, setScreen, dashboard }: {
+function Sidebar({ screen, setScreen, dashboard, locale }: {
   screen: Screen;
   setScreen: (screen: Screen) => void;
   dashboard: Dashboard;
+  locale: Locale;
 }) {
+  const t = copy(locale).sidebar;
   const items: Array<{ id: Screen; label: string; icon: typeof Home }> = [
-    { id: "home", label: "Today", icon: Home },
-    { id: "mission", label: "Focus", icon: Target },
-    { id: "activity", label: "Activity", icon: Activity },
-    { id: "profile", label: "Profile", icon: CircleUserRound },
+    { id: "home", label: t.today, icon: Home },
+    { id: "mission", label: t.focus, icon: Target },
+    { id: "activity", label: t.activity, icon: Activity },
+    { id: "profile", label: t.profile, icon: CircleUserRound },
   ];
 
   return (
@@ -263,27 +293,29 @@ function Sidebar({ screen, setScreen, dashboard }: {
       <div className="sidebar-footer">
         <div className="learning-dot" data-active={dashboard.personalization.adapting} />
         <div>
-          <strong>{dashboard.personalization.adapting ? "Learning from you" : "Ready to learn"}</strong>
-          <span>{dashboard.personalization.signal_count} preference signals</span>
+          <strong>{dashboard.personalization.adapting ? t.learning : t.ready}</strong>
+          <span>{dashboard.personalization.signal_count} {t.signals}</span>
         </div>
       </div>
     </aside>
   );
 }
 
-function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
+function HomeScreen({ dashboard, setScreen, onReact, onClarify, locale }: {
   dashboard: Dashboard;
   setScreen: (screen: Screen) => void;
   onReact: (action: "more_like_this" | "not_now" | "less_like_this", missionId: string) => void;
   onClarify: (clarificationId: string, choice: string) => void;
+  locale: Locale;
 }) {
+  const t = copy(locale).home;
   const today = dashboard.today;
   const progress = today?.progress.percent ?? 0;
   return (
     <section className="screen-content home-screen">
       <header className="topbar">
         <div>
-          <span className="eyebrow">Today</span>
+          <span className="eyebrow">{t.today}</span>
           <h1>{dashboard.experience.headline}</h1>
         </div>
         <div className="avatar-chip">{dashboard.user.display_name.slice(0, 1).toUpperCase()}</div>
@@ -293,7 +325,7 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
         <article className="focus-card">
           <div className="focus-card-top">
             <div>
-              <span className="card-kicker">Best next move</span>
+              <span className="card-kicker">{t.bestNext}</span>
               <h2>{dashboard.experience.message}</h2>
             </div>
             <div className="progress-orb" style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}>
@@ -304,8 +336,8 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
             <>
               <p className="why-now">{today.why_now}</p>
               <div className="meta-row">
-                <span><Clock3 size={16} /> {today.focus_minutes} min focus</span>
-                <span><Target size={16} /> {today.progress.completed}/{today.progress.total} steps</span>
+                <span><Clock3 size={16} /> {today.focus_minutes} {t.minFocus}</span>
+                <span><Target size={16} /> {today.progress.completed}/{today.progress.total} {t.steps}</span>
               </div>
             </>
           )}
@@ -333,9 +365,9 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
         <aside className="learning-card">
           <Sparkles size={20} />
           <div>
-            <span className="card-kicker">Personalization</span>
-            <h3>{dashboard.context ? "Learning your pattern" : dashboard.experience.learning.active ? "Lumen is adapting" : "No tuning needed"}</h3>
-            <p>{dashboard.context ? "Your starting answers are only hypotheses. What you actually do now changes them." : dashboard.experience.learning.message}</p>
+            <span className="card-kicker">{t.personalization}</span>
+            <h3>{dashboard.context ? t.learningPattern : dashboard.experience.learning.active ? t.adapting : t.noTuning}</h3>
+            <p>{dashboard.context ? t.hypotheses : dashboard.experience.learning.message}</p>
           </div>
         </aside>
       </div>
@@ -344,9 +376,9 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
         <article className="clarification-card">
           <div className="clarification-icon"><Sparkles size={18} /></div>
           <div className="clarification-copy">
-            <span className="card-kicker">Quick check</span>
+            <span className="card-kicker">{t.quickCheck}</span>
             <h3>{dashboard.clarification.prompt}</h3>
-            <p>I noticed a pattern and would rather ask once than keep guessing wrong.</p>
+            <p>{t.quickCheckBody}</p>
             <div className="clarification-actions">
               {dashboard.clarification.options.map((option) => (
                 <button
@@ -364,10 +396,10 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
 
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Mission radar</span>
-          <h2>What else is worth your attention</h2>
+          <span className="eyebrow">{t.radar}</span>
+          <h2>{t.radarTitle}</h2>
         </div>
-        <button className="text-button" onClick={() => setScreen("activity")}>See all <ChevronRight size={16} /></button>
+        <button className="text-button" onClick={() => setScreen("activity")}>{t.seeAll} <ChevronRight size={16} /></button>
       </div>
       <div className="radar-list">
         {dashboard.radar.map((mission, index) => (
@@ -375,7 +407,7 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
             <span className="radar-rank">0{index + 1}</span>
             <div className="radar-copy">
               <strong>{mission.title}</strong>
-              <span>Personal fit {mission.score.toFixed(1)}</span>
+              <span>{t.personalFit} {mission.score.toFixed(1)}</span>
             </div>
             <div className="score-pill">{mission.score.toFixed(1)}</div>
           </div>
@@ -385,27 +417,29 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
   );
 }
 
-function MissionScreen({ dashboard, onComplete }: {
+function MissionScreen({ dashboard, onComplete, locale }: {
   dashboard: Dashboard;
   onComplete: (step: number) => void;
+  locale: Locale;
 }) {
+  const t = copy(locale).mission;
   const today = dashboard.today;
   if (!today) {
-    return <section className="screen-content empty-state"><Sparkles size={28} /><h1>Nothing urgent right now.</h1></section>;
+    return <section className="screen-content empty-state"><Sparkles size={28} /><h1>{t.empty}</h1></section>;
   }
   return (
     <section className="screen-content mission-screen">
       <header className="topbar">
         <div>
-          <span className="eyebrow">Focus session</span>
+          <span className="eyebrow">{t.kicker}</span>
           <h1>{today.title}</h1>
         </div>
-        <div className="session-time"><Clock3 size={17} /> {today.focus_minutes} min</div>
+        <div className="session-time"><Clock3 size={17} /> {today.focus_minutes} {t.min}</div>
       </header>
       <div className="mission-layout">
         <div className="steps-card">
           <div className="progress-header">
-            <span>{today.progress.completed} of {today.progress.total} complete</span>
+            <span>{today.progress.completed} / {today.progress.total} {t.complete}</span>
             <strong>{today.progress.percent}%</strong>
           </div>
           <div className="progress-track"><span style={{ width: `${today.progress.percent}%` }} /></div>
@@ -424,11 +458,11 @@ function MissionScreen({ dashboard, onComplete }: {
         </div>
         <aside className="mission-aside">
           <div className="detail-card">
-            <span className="card-kicker">Why now</span>
+            <span className="card-kicker">{t.whyNow}</span>
             <p>{today.why_now}</p>
           </div>
           <div className="detail-card">
-            <span className="card-kicker">Done means</span>
+            <span className="card-kicker">{t.doneMeans}</span>
             <p>{today.definition_of_done}</p>
           </div>
         </aside>
@@ -437,23 +471,24 @@ function MissionScreen({ dashboard, onComplete }: {
   );
 }
 
-function ActivityScreen({ dashboard }: { dashboard: Dashboard }) {
+function ActivityScreen({ dashboard, locale }: { dashboard: Dashboard; locale: Locale }) {
+  const t = copy(locale).activity;
   return (
     <section className="screen-content">
       <header className="topbar">
-        <div><span className="eyebrow">Activity</span><h1>Your momentum</h1></div>
+        <div><span className="eyebrow">{t.kicker}</span><h1>{t.title}</h1></div>
       </header>
       <div className="stats-grid">
-        <div className="stat-card"><span>Active missions</span><strong>{dashboard.summary.active_missions}</strong></div>
-        <div className="stat-card"><span>Steps completed</span><strong>{dashboard.summary.completed_steps}</strong></div>
-        <div className="stat-card"><span>Learning signals</span><strong>{dashboard.personalization.signal_count}</strong></div>
+        <div className="stat-card"><span>{t.activeMissions}</span><strong>{dashboard.summary.active_missions}</strong></div>
+        <div className="stat-card"><span>{t.stepsCompleted}</span><strong>{dashboard.summary.completed_steps}</strong></div>
+        <div className="stat-card"><span>{t.learningSignals}</span><strong>{dashboard.personalization.signal_count}</strong></div>
       </div>
-      <div className="section-heading compact"><div><span className="eyebrow">Radar</span><h2>Current priorities</h2></div></div>
+      <div className="section-heading compact"><div><span className="eyebrow">{t.radar}</span><h2>{t.priorities}</h2></div></div>
       <div className="radar-list">
         {dashboard.radar.map((mission, index) => (
           <div className="radar-row" key={mission.id}>
             <span className="radar-rank">0{index + 1}</span>
-            <div className="radar-copy"><strong>{mission.title}</strong><span>Ranked from your goals and behavior</span></div>
+            <div className="radar-copy"><strong>{mission.title}</strong><span>{t.ranked}</span></div>
             <div className="score-pill">{mission.score.toFixed(1)}</div>
           </div>
         ))}
@@ -462,18 +497,24 @@ function ActivityScreen({ dashboard }: { dashboard: Dashboard }) {
   );
 }
 
-function ProfileScreen({ dashboard, onDashboard }: {
+function ProfileScreen({ dashboard, onDashboard, locale, onLocale }: {
   dashboard: Dashboard;
   onDashboard: (dashboard: Dashboard) => void;
+  locale: Locale;
+  onLocale: (locale: Locale) => void;
 }) {
+  const t = copy(locale).profile;
   return (
     <section className="screen-content">
-      <header className="topbar"><div><span className="eyebrow">Profile</span><h1>{dashboard.user.display_name}</h1></div></header>
+      <header className="topbar">
+        <div><span className="eyebrow">{t.kicker}</span><h1>{dashboard.user.display_name}</h1></div>
+        <LanguageToggle locale={locale} onChange={onLocale} />
+      </header>
       <div className="profile-panel">
         <div className="profile-avatar">{dashboard.user.display_name.slice(0, 1).toUpperCase()}</div>
         <div>
-          <h2>Lumen is personal to this workspace</h2>
-          <p>Your missions, progress and preference signals stay isolated from every other user.</p>
+          <h2>{t.personalTitle}</h2>
+          <p>{t.personalBody}</p>
         </div>
       </div>
 
@@ -481,8 +522,8 @@ function ProfileScreen({ dashboard, onDashboard }: {
         <div className="context-panel">
           <div className="section-heading compact">
             <div>
-              <span className="eyebrow">What Lumen understands so far</span>
-              <h2>Living assumptions, updated by your behavior</h2>
+              <span className="eyebrow">{t.understands}</span>
+              <h2>{t.assumptions}</h2>
             </div>
           </div>
           <div className="context-grid">
@@ -490,7 +531,7 @@ function ProfileScreen({ dashboard, onDashboard }: {
               <div className="context-item" key={item.key}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
-                <small>{Math.round(item.confidence * 100)}% confidence · Lumen will revise this when the evidence changes.</small>
+                <small>{Math.round(item.confidence * 100)}% {t.confidence}</small>
               </div>
             ))}
           </div>
@@ -499,45 +540,74 @@ function ProfileScreen({ dashboard, onDashboard }: {
 
       <div className="section-heading compact">
         <div>
-          <span className="eyebrow">Connections</span>
-          <h2>Optional evidence from the tools you already use</h2>
+          <span className="eyebrow">{t.connections}</span>
+          <h2>{t.connectionsTitle}</h2>
         </div>
       </div>
-      <GitHubConnection dashboard={dashboard} onDashboard={onDashboard} />
+      <GitHubConnection dashboard={dashboard} locale={locale} onDashboard={onDashboard} />
 
       <div className="learning-card profile-learning">
         <Sparkles size={20} />
-        <div><span className="card-kicker">Adaptive profile</span><h3>{dashboard.personalization.signal_count} preference signals</h3><p>Use Lumen normally. Finishing work and lightweight reactions now update both ranking and Lumen’s confidence in its assumptions.</p></div>
+        <div><span className="card-kicker">{t.adaptive}</span><h3>{dashboard.personalization.signal_count} {t.signals}</h3><p>{t.adaptiveBody}</p></div>
       </div>
     </section>
   );
 }
 
 export default function App() {
+  const [locale, setLocale] = useState<Locale>(() => detectLocale());
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [screen, setScreen] = useState<Screen>("home");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const appCopy = copy(locale).app;
 
   useEffect(() => {
+    persistLocale(locale);
+    setRequestLocale(locale);
+  }, [locale]);
+
+  useEffect(() => {
+    setRequestLocale(locale);
     bootstrap("default")
       .then((result) => {
+        const resolved = result.context?.locale ?? result.dashboard?.locale ?? result.locale;
+        if ((resolved === "ru" || resolved === "en") && resolved !== locale) {
+          setLocale(resolved);
+          setRequestLocale(resolved);
+          persistLocale(resolved);
+        }
         setNeedsOnboarding(!result.initialized);
         setDashboard(result.dashboard);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Lumen could not start."))
+      .catch((err) => setError(errorMessage(err, appCopy.startupError)))
       .finally(() => setLoading(false));
   }, []);
 
+  const changeLocale = (next: Locale) => {
+    setRequestLocale(next);
+    persistLocale(next);
+    setLocale(next);
+    if (dashboard) {
+      setWorking(true);
+      bootstrap(dashboard.user.id)
+        .then((result) => {
+          if (result.dashboard) setDashboard(result.dashboard);
+        })
+        .catch((err) => setError(errorMessage(err, copy(next).app.startupError)))
+        .finally(() => setWorking(false));
+    }
+  };
+
   const content = useMemo(() => {
     if (!dashboard) return null;
-    if (screen === "mission") return <MissionScreen dashboard={dashboard} onComplete={handleComplete} />;
-    if (screen === "activity") return <ActivityScreen dashboard={dashboard} />;
-    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} />;
-    return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} onClarify={handleClarify} />;
-  }, [dashboard, screen]);
+    if (screen === "mission") return <MissionScreen dashboard={dashboard} onComplete={handleComplete} locale={locale} />;
+    if (screen === "activity") return <ActivityScreen dashboard={dashboard} locale={locale} />;
+    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} locale={locale} onLocale={changeLocale} />;
+    return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} onClarify={handleClarify} locale={locale} />;
+  }, [dashboard, screen, locale]);
 
   async function handleReact(action: "more_like_this" | "not_now" | "less_like_this", missionId: string) {
     if (!dashboard || working) return;
@@ -546,7 +616,7 @@ export default function App() {
     try {
       setDashboard(await reactToMission(dashboard.user.id, action, missionId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update your preference.");
+      setError(errorMessage(err, appCopy.preferenceError));
     } finally {
       setWorking(false);
     }
@@ -559,7 +629,7 @@ export default function App() {
     try {
       setDashboard(await answerClarification(dashboard.user.id, clarificationId, choice));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update Lumen’s understanding.");
+      setError(errorMessage(err, appCopy.understandingError));
     } finally {
       setWorking(false);
     }
@@ -572,7 +642,7 @@ export default function App() {
     try {
       setDashboard(await completeStep(dashboard.user.id, dashboard.today.mission_id, step));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save progress.");
+      setError(errorMessage(err, appCopy.progressError));
     } finally {
       setWorking(false);
     }
@@ -583,18 +653,18 @@ export default function App() {
   }
 
   if (error && !dashboard && !needsOnboarding) {
-    return <div className="launch-screen error-state"><h1>Lumen couldn't start</h1><p>{error}</p></div>;
+    return <div className="launch-screen error-state"><h1>{appCopy.fatalTitle}</h1><p>{error}</p></div>;
   }
 
   if (needsOnboarding || !dashboard) {
-    return <Onboarding onReady={(next) => { setDashboard(next); setNeedsOnboarding(false); }} />;
+    return <Onboarding locale={locale} onLocale={changeLocale} onReady={(next) => { setDashboard(next); setNeedsOnboarding(false); }} />;
   }
 
   return (
     <div className="app-shell">
-      <Sidebar screen={screen} setScreen={setScreen} dashboard={dashboard} />
+      <Sidebar screen={screen} setScreen={setScreen} dashboard={dashboard} locale={locale} />
       <main className="main-pane">
-        {working && <div className="working-indicator"><Loader2 className="spin" size={14} /> Saving</div>}
+        {working && <div className="working-indicator"><Loader2 className="spin" size={14} /> {appCopy.saving}</div>}
         {error && <button className="toast-error" onClick={() => setError(null)}>{error}<X size={14} /></button>}
         {content}
       </main>
