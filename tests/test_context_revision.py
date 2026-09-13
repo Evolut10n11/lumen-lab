@@ -83,7 +83,9 @@ def test_revise_direction_rebuilds_current_work_from_new_explicit_goal(
     )
 
     assert revised["user"]["priorities"] == {"Prepare for robotics interviews": 10}
-    assert revised["user"]["interests"] == ["Interview preparation"]
+    assert revised["user"]["interests"] == [
+        "career preparation and visible proof of skill"
+    ]
     assert revised["user"]["constraints"] == []
     assert "Prepare for robotics interviews" in revised["today"]["title"]
     assert revised["today"]["focus_minutes"] == 15
@@ -118,7 +120,9 @@ def test_revise_direction_preserves_unspecified_context_and_focus(
     )
 
     assert revised["today"]["focus_minutes"] == 30
-    assert revised["user"]["interests"] == ["Building AI products"]
+    assert revised["user"]["interests"] == [
+        "one user-visible outcome in the current project"
+    ]
     assert revised["user"]["constraints"] == ["Too many parallel tasks"]
     assert hypothesis(revised["context"], "current_context")["value"] == "Building AI products"
     assert hypothesis(revised["context"], "friction")["value"] == "Too many parallel tasks"
