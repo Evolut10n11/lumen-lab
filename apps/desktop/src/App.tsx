@@ -573,7 +573,7 @@ export default function App() {
     setRequestLocale(locale);
     bootstrap("default")
       .then((result) => {
-        const resolved = result.context?.locale ?? result.dashboard?.locale ?? result.locale;
+        const resolved = result.dashboard?.locale ?? result.locale ?? result.context?.locale;
         if ((resolved === "ru" || resolved === "en") && resolved !== locale) {
           setLocale(resolved);
           setRequestLocale(resolved);

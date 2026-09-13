@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .feedback import PreferenceFeedback, feedback_adjustment, load_feedback, record_feedback
+from .locale_sync import synchronize_workspace_locale
 from .localization import is_russian, normalize_locale
 from .mission_radar import Mission, load_missions, radar_snapshot
 from .personalization import build_profile, initialize_workspace, profile_payload
@@ -342,6 +343,7 @@ class LumenApplication:
     ) -> dict[str, Any]:
         locale = normalize_locale(locale)
         workspace = self.workspace(user_id)
+        synchronize_workspace_locale(workspace, locale)
         profile = load_profile(workspace.profile_path)
         missions = load_missions(workspace.missions_path)
         feedback = load_feedback(workspace.feedback_path)
