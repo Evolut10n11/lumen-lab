@@ -201,15 +201,37 @@ type BridgeResponse<T> =
   | { ok: true; data: T }
   | { ok: false; error: { type: string; message: string } };
 
+function nativeError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (typeof error === "string" && error.trim()) return new Error(error);
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error("Lumen desktop bridge failed with an unknown error.");
+  }
+}
+
 async function request<T>(
   action: string,
   userId: string | null,
   payload: Record<string, unknown> = {},
 ): Promise<T> {
-  const raw = await invoke<string>("lumen_request", {
-    request: JSON.stringify({ action, user_id: userId, payload }),
-  });
-  const response = JSON.parse(raw) as BridgeResponse<T>;
+  let raw: string;
+  try {
+    raw = await invoke<string>("lumen_request", {
+      request: JSON.stringify({ action, user_id: userId, payload }),
+    });
+  } catch (error) {
+    throw nativeError(error);
+  }
+
+  let response: BridgeResponse<T>;
+  try {
+    response = JSON.parse(raw) as BridgeResponse<T>;
+  } catch (error) {
+    throw new Error(`Lumen engine returned an unreadable response: ${raw.slice(0, 500)}`);
+  }
+
   if (!response.ok) {
     throw new Error(response.error.message);
   }
