@@ -117,5 +117,12 @@
     "observed_value": 9,
     "learning_value": 10,
     "result": "Implemented an explicit validated local profile layer with weighted priorities, tagged mission alignment, neutral Mission Radar and Work Session branding, shared profile-aware ranking, backward-compatible no-profile behavior, tests proving two profiles rank the same portfolio differently, and documentation separating explicit profile data from future optional LLM idea generation."
+  },
+  {
+    "experiment_id": "exp-019",
+    "expected_score": 8.7,
+    "observed_value": 9,
+    "learning_value": 10,
+    "result": "Implemented review-gated profile-driven proposal generation with a strict proposal schema, deterministic mission/profile evidence, policy and risk enforcement, optional OpenAI-compatible LLM enrichment with safe fallback, explicit review snapshots, separately revalidated backlog acceptance, tests, CLI integration, and documentation without granting generators execution authority."
   }
 ]
