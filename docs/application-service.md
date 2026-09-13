@@ -35,7 +35,25 @@ A GUI starts with one call:
 payload = app.bootstrap("alice")
 ```
 
-If the user is new, render onboarding. If the user already exists, render the returned dashboard. The GUI never needs to inspect `.lumen/` directly.
+If the user is new, `bootstrap()` returns a compact `onboarding` contract with only two required inputs: display name and one-to-five goals. If the user already exists, `onboarding` is `null` and the dashboard is returned.
+
+The GUI never needs to inspect `.lumen/` directly.
+
+## Quick onboarding
+
+The normal product path does not ask the user to assign numbers to priorities.
+
+```python
+app.quick_onboard(
+    "alice",
+    display_name="Alice",
+    goals=["Build an AI portfolio", "Get stronger"],
+)
+```
+
+Lumen turns the ordered goals into an initial ranking hypothesis internally. Those starting weights are not a permanent user preference model; real behavior and lightweight reactions refine the ranking afterward.
+
+The lower-level `onboard()` method remains available for imports, tests, advanced clients, and explicit configuration.
 
 ## Dashboard as a product contract
 
@@ -82,20 +100,6 @@ Normal progress remains normal progress. When a user completes the final step of
 Repeatedly opening or re-completing an already finished step does not create duplicate preference events.
 
 This gives Lumen useful adaptation even when a user never presses a feedback button.
-
-## Onboarding
-
-`onboard()` still accepts explicit profile inputs, but the GUI should keep the first-run experience small. It can begin from a name and a small number of high-level goals, then let actual usage refine ranking over time.
-
-```python
-app.onboard(
-    "alice",
-    display_name="Alice",
-    priorities={"career": 10},
-)
-```
-
-Additional interests, skills, constraints, stack preferences, and risk tolerance are optional enrichment rather than a required configuration wizard.
 
 ## Design rule for the GUI
 
