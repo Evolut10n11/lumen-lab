@@ -12,10 +12,11 @@ from .models import Experiment
 @dataclass(slots=True)
 class LabStore:
     root: Path
+    state_directory: Path | None = None
 
     @property
     def state_dir(self) -> Path:
-        return self.root / "state"
+        return self.state_directory if self.state_directory is not None else self.root / "state"
 
     @property
     def backlog_path(self) -> Path:
