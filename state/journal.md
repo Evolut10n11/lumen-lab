@@ -155,3 +155,13 @@ The implementation rejects duplicate experiment records and artifact paths, unsa
 Expected score: 7.60. Observed score: 8.30. Calibration error: 0.70. Sixteen-outcome calibration MAE: 0.82.
 
 Against the frozen `+0.94` baseline, `exp-015` is the sixth forward holdout: raw error 0.70 becomes 0.24. Across six holdouts the raw MAE is 0.62 and corrected MAE is 0.32, a 47.57% improvement without refitting. The remaining internal backlog is now `exp-014` state schema versioning; the separately opened universal-profile experiment remains product work rather than a replacement for the internal state-safety backlog.
+
+## 2026-09-13 — exp-018 completed
+
+Implemented an explicit local profile layer so personalization no longer depends on hard-coded Elaine branding or implicit conversation context. `state/profile.json` now carries validated priorities, skills, interests, constraints, preferred stack, risk tolerance, and a candidate-generation policy. Missions remain repository-owned data and now expose neutral tags; the original mission score stays visible while a small deterministic profile-alignment adjustment changes ranking explainably.
+
+`lumen-radar` and `lumen-work` use the same optional profile-aware ranking and fall back to the original base score when no profile is present. The test suite proves that two different profiles rank the same mission portfolio differently, while no-profile behavior remains backward compatible. Core CLI wording is now neutral Lumen wording; project-specific names such as Elaine may still exist in user data as ordinary missions.
+
+Expected score: 8.75. Observed score: 9.30. Calibration error: 0.55. Seventeen-outcome calibration MAE: 0.80.
+
+Against the frozen `+0.94` baseline, `exp-018` is the seventh forward holdout: raw error 0.55 becomes 0.39. Across seven holdouts the raw MAE is 0.61 and corrected MAE is 0.33, a 45.18% improvement without refitting. The baseline remains frozen. The internal backlog still contains `exp-014` state schema versioning, while the next product step should generate reviewable candidate ideas from the explicit profile plus repository evidence without granting proposal generation any execution authority.
