@@ -23,6 +23,7 @@ lumen = "lumen_lab.cli:main"
 lumen-calibrate = "lumen_lab.calibration_cli:main"
 lumen-synthesize = "lumen_lab.synthesis_cli:main"
 lumen-capabilities = "lumen_lab.capabilities_cli:main"
+lumen-rankcheck = "lumen_lab.ranking_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
