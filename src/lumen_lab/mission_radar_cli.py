@@ -4,26 +4,30 @@ import argparse
 import json
 from pathlib import Path
 
-from .mission_radar import DEFAULT_MISSIONS_PATH, load_missions, radar_snapshot
-from .profile import DEFAULT_PROFILE_PATH, load_profile
+from .mission_radar import load_missions, radar_snapshot
+from .profile import load_profile
+from .workspace import UserWorkspace
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lumen-radar",
-        description="Rank user or project missions and show the most valuable next action.",
+        description="Rank this user's missions and show the most valuable next action.",
+    )
+    parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument(
+        "--user",
+        help="Local user id. Defaults to LUMEN_USER_ID or 'default'.",
     )
     parser.add_argument(
         "--state",
         type=Path,
-        default=DEFAULT_MISSIONS_PATH,
-        help="Mission state JSON file (default: state/missions.json).",
+        help="Explicit mission state JSON. By default uses this user's isolated local state.",
     )
     parser.add_argument(
         "--profile",
         type=Path,
-        default=DEFAULT_PROFILE_PATH,
-        help="Explicit local profile JSON (default: state/profile.json when present).",
+        help="Explicit profile JSON. By default uses this user's isolated local profile.",
     )
     parser.add_argument(
         "--top",
@@ -41,9 +45,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    workspace = UserWorkspace.from_root(args.root, args.user)
     try:
-        missions = load_missions(args.state)
-        profile = load_profile(args.profile) if args.profile.exists() else None
+        if args.state is None:
+            workspace.require_initialized()
+        missions_path = args.state or workspace.missions_path
+        profile_path = args.profile or workspace.profile_path
+        missions = load_missions(missions_path)
+        profile = load_profile(profile_path) if profile_path.exists() else None
         snapshot = radar_snapshot(missions, top=args.top, profile=profile)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"mission radar error: {exc}")
