@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .feedback import feedback_adjustment, load_feedback, record_feedback
 from .mission_radar import Mission, load_missions, radar_snapshot
 from .personalization import build_profile, initialize_workspace, profile_payload
 from .profile import Profile, load_profile, normalized_label
@@ -18,7 +19,7 @@ from .work_session import (
 )
 from .workspace import UserWorkspace
 
-APP_SCHEMA_VERSION = 1
+APP_SCHEMA_VERSION = 2
 
 
 def _matched_priorities(mission: Mission, profile: Profile) -> list[dict[str, Any]]:
@@ -30,8 +31,14 @@ def _matched_priorities(mission: Mission, profile: Profile) -> list[dict[str, An
     return sorted(matches, key=lambda item: (-item["weight"], normalized_label(item["name"])))
 
 
-def _selection_explanation(mission: Mission, profile: Profile, score: float) -> dict[str, Any]:
+def _selection_explanation(
+    mission: Mission,
+    profile: Profile,
+    score: float,
+    feedback,
+) -> dict[str, Any]:
     matched = _matched_priorities(mission, profile)
+    feedback_delta = feedback_adjustment(mission.id, mission.tags, feedback)
     reasons: list[str] = [mission.why_now]
     if matched:
         strongest = matched[0]
@@ -49,9 +56,18 @@ def _selection_explanation(mission: Mission, profile: Profile, score: float) -> 
             f"Its risk {mission.risk}/10 is within your tolerance "
             f"{profile.risk_tolerance}/10."
         )
+    if feedback_delta > 0:
+        reasons.append(
+            f"Your previous feedback raises this mission by {feedback_delta:.2f} points."
+        )
+    elif feedback_delta < 0:
+        reasons.append(
+            f"Your previous feedback lowers this mission by {abs(feedback_delta):.2f} points."
+        )
     return {
         "score": score,
         "base_score": mission.score,
+        "feedback_adjustment": feedback_delta,
         "matched_priorities": matched,
         "reasons": reasons,
     }
@@ -131,20 +147,22 @@ class LumenApplication:
         workspace = self.workspace(user_id)
         profile = load_profile(workspace.profile_path)
         missions = load_missions(workspace.missions_path)
-        radar = radar_snapshot(missions, top=top, profile=profile)
+        feedback = load_feedback(workspace.feedback_path)
+        radar = radar_snapshot(missions, top=top, profile=profile, feedback=feedback)
         templates = load_templates(workspace.work_sessions_path)
         progress = load_progress(workspace.work_progress_path)
 
         active_missions = [mission for mission in missions if mission.status == "active"]
         today: dict[str, Any] | None = None
         if active_missions:
-            mission = choose_mission(missions, profile=profile)
+            mission = choose_mission(missions, profile=profile, feedback=feedback)
             template = template_for(templates, mission.id)
-            today = session_snapshot(mission, template, progress, profile)
+            today = session_snapshot(mission, template, progress, profile, feedback)
             today["selection"] = _selection_explanation(
                 mission,
                 profile,
                 float(today["score"]),
+                feedback,
             )
 
         completed_steps = sum(len(items) for items in progress.values())
@@ -158,12 +176,41 @@ class LumenApplication:
             "user": profile_payload(profile),
             "today": today,
             "radar": radar,
+            "feedback": feedback.to_dict(),
             "summary": {
                 "active_missions": len(active_missions),
                 "completed_steps": completed_steps,
                 "total_active_steps": total_steps,
+                "feedback_events": feedback.events,
             },
         }
+
+    def rate_mission(
+        self,
+        sentiment: str,
+        user_id: str | None = None,
+        *,
+        mission_id: str | None = None,
+        top: int = 3,
+    ) -> dict[str, Any]:
+        """Record explicit user preference feedback and return the updated dashboard."""
+        workspace = self.workspace(user_id)
+        profile = load_profile(workspace.profile_path)
+        missions = load_missions(workspace.missions_path)
+        feedback = load_feedback(workspace.feedback_path)
+        mission = choose_mission(
+            missions,
+            mission_id=mission_id,
+            profile=profile,
+            feedback=feedback,
+        )
+        record_feedback(
+            workspace.feedback_path,
+            mission_id=mission.id,
+            tags=mission.tags,
+            sentiment=sentiment,
+        )
+        return self.dashboard(workspace.user_id, top=top)
 
     def complete_step(
         self,
@@ -175,8 +222,14 @@ class LumenApplication:
         workspace = self.workspace(user_id)
         profile = load_profile(workspace.profile_path)
         missions = load_missions(workspace.missions_path)
+        feedback = load_feedback(workspace.feedback_path)
         templates = load_templates(workspace.work_sessions_path)
-        mission = choose_mission(missions, mission_id=mission_id, profile=profile)
+        mission = choose_mission(
+            missions,
+            mission_id=mission_id,
+            profile=profile,
+            feedback=feedback,
+        )
         template = template_for(templates, mission.id)
         progress = mark_step_done(
             workspace.work_progress_path,
@@ -184,10 +237,11 @@ class LumenApplication:
             step_number,
             len(template.steps),
         )
-        snapshot = session_snapshot(mission, template, progress, profile)
+        snapshot = session_snapshot(mission, template, progress, profile, feedback)
         snapshot["selection"] = _selection_explanation(
             mission,
             profile,
             float(snapshot["score"]),
+            feedback,
         )
         return snapshot
