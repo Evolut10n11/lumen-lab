@@ -1,6 +1,5 @@
 from .models import Experiment
 
-
 _CURATED_NEXT_GENERATION = (
     Experiment(
         id="exp-006",
