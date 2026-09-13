@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import pathlib
 import sys
-from pathlib import Path
 
 import pytest
 
 from lumen_lab.sandbox import SandboxError, run_sandboxed
 
 
-PYTHON = Path(sys.executable).name
+PYTHON = pathlib.Path(sys.executable).name
 
 
 def run_python(code: str, **kwargs: object):
@@ -53,11 +53,11 @@ def test_parent_environment_is_not_inherited(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_working_directory_is_temporary_and_removed_after_run() -> None:
-    original = Path.cwd().resolve()
+    original = pathlib.Path.cwd().resolve()
     result = run_python("import os; print(os.getcwd())")
-    workspace = Path(result.working_directory)
+    workspace = pathlib.Path(result.working_directory)
 
-    assert Path(result.stdout.strip()).resolve() == workspace
+    assert pathlib.Path(result.stdout.strip()).resolve() == workspace
     assert workspace != original
     assert not workspace.exists()
 
