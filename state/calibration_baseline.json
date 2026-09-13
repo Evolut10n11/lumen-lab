@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "intercept": 0.94,
+  "training_experiment_ids": [
+    "exp-001",
+    "exp-002",
+    "exp-003",
+    "exp-004",
+    "exp-005",
+    "exp-006",
+    "exp-007",
+    "exp-008",
+    "exp-009",
+    "exp-010"
+  ]
+}
