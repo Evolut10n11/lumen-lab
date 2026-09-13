@@ -13,6 +13,7 @@ import {
   Target,
   X,
 } from "lucide-react";
+import GitHubConnection from "./GitHubConnection";
 import {
   answerClarification,
   bootstrap,
@@ -461,7 +462,10 @@ function ActivityScreen({ dashboard }: { dashboard: Dashboard }) {
   );
 }
 
-function ProfileScreen({ dashboard }: { dashboard: Dashboard }) {
+function ProfileScreen({ dashboard, onDashboard }: {
+  dashboard: Dashboard;
+  onDashboard: (dashboard: Dashboard) => void;
+}) {
   return (
     <section className="screen-content">
       <header className="topbar"><div><span className="eyebrow">Profile</span><h1>{dashboard.user.display_name}</h1></div></header>
@@ -493,6 +497,14 @@ function ProfileScreen({ dashboard }: { dashboard: Dashboard }) {
         </div>
       )}
 
+      <div className="section-heading compact">
+        <div>
+          <span className="eyebrow">Connections</span>
+          <h2>Optional evidence from the tools you already use</h2>
+        </div>
+      </div>
+      <GitHubConnection dashboard={dashboard} onDashboard={onDashboard} />
+
       <div className="learning-card profile-learning">
         <Sparkles size={20} />
         <div><span className="card-kicker">Adaptive profile</span><h3>{dashboard.personalization.signal_count} preference signals</h3><p>Use Lumen normally. Finishing work and lightweight reactions now update both ranking and Lumen’s confidence in its assumptions.</p></div>
@@ -523,7 +535,7 @@ export default function App() {
     if (!dashboard) return null;
     if (screen === "mission") return <MissionScreen dashboard={dashboard} onComplete={handleComplete} />;
     if (screen === "activity") return <ActivityScreen dashboard={dashboard} />;
-    if (screen === "profile") return <ProfileScreen dashboard={dashboard} />;
+    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} />;
     return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} onClarify={handleClarify} />;
   }, [dashboard, screen]);
 
