@@ -77,27 +77,37 @@ It currently includes:
 - opt-in public GitHub context with preview-before-save;
 - refresh and disconnect controls for GitHub-derived context;
 - Activity and Profile views;
-- persistence across application restarts.
+- persistence across application restarts;
+- a standalone packaged engine for Windows;
+- an NSIS Windows installer build that requires no Python or development tooling on the end-user machine.
 
-The desktop shell, frontend build, Python bridge, and Tauri host are covered by CI.
+The desktop shell, frontend build, Python bridge, Tauri host, standalone engine smoke test, and Windows installer build are covered by CI.
 
-### Current distribution status
+### Windows install
 
-Lumen is not yet published as a finished Windows installer. The application currently runs from the repository during development.
+Lumen now produces a normal Windows setup executable:
 
-The distribution goal is:
+```text
+Lumen_0.1.0_x64-setup.exe
+```
+
+The user path is:
 
 ```text
 Download Lumen
-→ Install
-→ Open
+→ Run the setup executable
+→ Open Lumen from Windows
 → 1–2 minute introduction
 → Start using it
 ```
 
-No Python, Node, Rust, PowerShell, or CLI should be required for the final user installation.
+Python, Node.js, Rust, Git, PowerShell, and a virtual environment are not required on the user's machine. The Python Lumen engine is packaged as a standalone executable and bundled into the Tauri application.
 
-See [Desktop application](docs/desktop-app.md).
+The CI-built installer is available as a **Windows Installer** workflow artifact. Tagged versions (`v*`) are configured to publish the generated setup executable to GitHub Releases automatically.
+
+Development installers are currently unsigned, so Windows SmartScreen may show a publisher/reputation warning until production code signing is added.
+
+See [Windows installation](docs/windows-installation.md) and [Desktop application](docs/desktop-app.md).
 
 ## Optional context connections
 
@@ -202,6 +212,7 @@ See [Application service](docs/application-service.md) and [Architecture](docs/a
 ```text
 lumen-lab/
 ├── apps/desktop/             React + Tauri desktop application
+├── packaging/                standalone desktop-engine packaging entry point
 ├── src/lumen_lab/            personalization and application engine
 ├── docs/                     architecture and deeper technical documentation
 ├── tests/                    product and safety behavior contracts
@@ -218,9 +229,9 @@ Installing Lumen must never make a new user inherit the repository owner's profi
 
 ## Running the desktop app from source
 
-This section is for contributors while the installer is still being built.
+This section is only for contributors. Normal Windows users should install the packaged application instead.
 
-Requirements:
+Requirements for source development:
 
 - Python 3.11+
 - Node.js
@@ -242,7 +253,7 @@ npm install
 npm run tauri dev
 ```
 
-The production goal is to remove these requirements from the end-user experience by packaging the Python engine with the desktop application.
+The packaged Windows build uses a standalone `lumen-engine.exe`; the source-development flow intentionally keeps the simpler Python interpreter path for debugging.
 
 ## Development
 
@@ -256,6 +267,8 @@ lumen-doctor
 ```
 
 Desktop checks live in the dedicated Desktop CI workflow and validate both the frontend build and the Tauri host.
+
+The Windows Installer workflow builds the standalone engine with PyInstaller, smoke-tests it without a Python interpreter dependency, generates the Tauri icon set, builds the NSIS setup executable, and uploads the resulting installer artifact.
 
 GitHub Actions also runs the Python test/lint matrix on Python 3.11, 3.12, and 3.13.
 
@@ -325,11 +338,11 @@ meet the user
 
 The next major milestones are:
 
-- package the Python engine into the desktop build;
-- Windows installer and release artifacts;
+- publish convenient tagged Windows releases and add Authenticode code signing;
 - authenticated GitHub access for optional private-repository context;
 - richer evidence-based recommendations;
 - clearer integration/privacy controls;
+- reduce packaged-engine startup latency as the desktop interaction loop grows;
 - visual polish and final design alignment.
 
 The long-term goal is not to make Lumen maximally autonomous. It is to make it **personally useful with as little configuration as possible**, while keeping the user's data, choices, and trust boundaries understandable.
