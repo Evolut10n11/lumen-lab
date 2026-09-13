@@ -203,3 +203,13 @@ def test_stale_synthesis_fails(tmp_path: Path) -> None:
 
     assert checks["synthesis"][0] is False
     assert "stale" in checks["synthesis"][1]
+
+
+def test_repository_state_is_healthy() -> None:
+    root = Path(__file__).resolve().parents[1]
+
+    report = run_doctor(root)
+
+    assert report.healthy, [
+        f"{check.name}: {check.detail}" for check in report.checks if not check.passed
+    ]
