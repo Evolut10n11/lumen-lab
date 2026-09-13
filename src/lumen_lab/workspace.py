@@ -58,6 +58,10 @@ class UserWorkspace:
         return self.directory / "onboarding_context.json"
 
     @property
+    def github_context_path(self) -> Path:
+        return self.directory / "github_context.json"
+
+    @property
     def missions_path(self) -> Path:
         return self.directory / "missions.json"
 

@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles.css";
 import "./onboarding.css";
 import "./adaptive.css";
+import "./github-connection.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

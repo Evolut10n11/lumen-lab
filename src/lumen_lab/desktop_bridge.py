@@ -12,6 +12,15 @@ from .context_learning import (
     observe_context_signal,
 )
 from .feedback import load_feedback, record_feedback
+from .github_user_context import (
+    GitHubPublicContextClient,
+    apply_github_evidence,
+    clear_github_evidence,
+    disconnect_github,
+    github_integration_payload,
+    load_github_snapshot,
+    save_github_snapshot,
+)
 from .mission_radar import Mission, load_missions
 from .onboarding import (
     apply_focus_minutes,
@@ -58,8 +67,12 @@ def _decorate_dashboard(
 ) -> dict[str, Any]:
     workspace = app.workspace(user_id)
     context = load_onboarding_context(workspace.onboarding_context_path)
+    github = load_github_snapshot(workspace.github_context_path)
     dashboard["context"] = context
     dashboard["clarification"] = clarification_for_context(context)
+    dashboard["integrations"] = {
+        "github": github_integration_payload(github),
+    }
     return dashboard
 
 
@@ -70,6 +83,13 @@ def _dashboard_with_context(
     top: int = 3,
 ) -> dict[str, Any]:
     return _decorate_dashboard(app, user_id, app.dashboard(user_id, top=top))
+
+
+def _github_username(payload: dict[str, Any]) -> str:
+    username = payload.get("username")
+    if not isinstance(username, str) or not username.strip():
+        raise ValueError("GitHub username must be a non-empty string")
+    return username
 
 
 def dispatch(request: dict[str, Any]) -> dict[str, Any]:
@@ -97,10 +117,18 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             workspace = app.workspace(result["selected_user_id"])
             context = load_onboarding_context(workspace.onboarding_context_path)
             result["context"] = context
+            result["integrations"] = {
+                "github": github_integration_payload(
+                    load_github_snapshot(workspace.github_context_path)
+                )
+            }
             if isinstance(result.get("dashboard"), dict):
                 _decorate_dashboard(app, result["selected_user_id"], result["dashboard"])
         else:
             result["context"] = None
+            result["integrations"] = {
+                "github": github_integration_payload(None),
+            }
         return result
 
     if action == "dashboard":
@@ -165,6 +193,37 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             goals=goals,
             replace=bool(payload.get("replace", False)),
         )
+        return _dashboard_with_context(app, user_id)
+
+    if action == "github_preview":
+        app.workspace(user_id)
+        return GitHubPublicContextClient().fetch(_github_username(payload))
+
+    if action == "github_connect":
+        workspace = app.workspace(user_id)
+        snapshot = GitHubPublicContextClient().fetch(_github_username(payload))
+        save_github_snapshot(workspace.github_context_path, snapshot)
+        apply_github_evidence(workspace.onboarding_context_path, snapshot)
+        return _dashboard_with_context(app, user_id)
+
+    if action == "github_refresh":
+        workspace = app.workspace(user_id)
+        existing = load_github_snapshot(workspace.github_context_path)
+        if existing is None:
+            raise ValueError("GitHub is not connected for this user")
+        account = existing.get("account")
+        username = account.get("username") if isinstance(account, dict) else None
+        if not isinstance(username, str) or not username:
+            raise ValueError("saved GitHub context does not contain a username")
+        snapshot = GitHubPublicContextClient().fetch(username)
+        save_github_snapshot(workspace.github_context_path, snapshot)
+        apply_github_evidence(workspace.onboarding_context_path, snapshot)
+        return _dashboard_with_context(app, user_id)
+
+    if action == "github_disconnect":
+        workspace = app.workspace(user_id)
+        disconnect_github(workspace.github_context_path)
+        clear_github_evidence(workspace.onboarding_context_path)
         return _dashboard_with_context(app, user_id)
 
     if action == "react":
