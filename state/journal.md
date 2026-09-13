@@ -14,3 +14,11 @@ Expected score: 7.95. Observed score: 8.30. Calibration error: 0.35.
 
 The result is encouraging, but one outcome is not enough to retune the planner. Weight changes require at least five completed experiments.
 
+## 2026-09-13 — exp-001 completed
+
+Implemented a conservative GitHub Issues bridge for pending experiments. The bridge uses deterministic ownership markers, defaults to zero-network dry-run mode, requires explicit repository and authentication for writes, and only creates or updates issues that it can prove it owns. It never closes issues or mutates unmarked human-owned issues.
+
+Expected score: 6.75. Observed score: 8.00. Calibration error: 1.25.
+
+The experiment delivered more operational value than the planner predicted, especially because visibility and steerability can now be added without making GitHub a hidden source of truth. Two outcomes are still insufficient to retune planner weights; the five-outcome minimum remains in force.
+

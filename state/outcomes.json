@@ -5,5 +5,12 @@
     "observed_value": 8,
     "learning_value": 9,
     "result": "Implemented a structured outcome ledger, calibration metric, CLI reporting, persistence, and tests."
+  },
+  {
+    "experiment_id": "exp-001",
+    "expected_score": 6.75,
+    "observed_value": 8,
+    "learning_value": 8,
+    "result": "Implemented a conservative GitHub Issues bridge with deterministic ownership markers, dry-run by default, explicit apply mode, unmanaged-issue protection, tests, and safety documentation."
   }
 ]
