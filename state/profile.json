@@ -1,0 +1,42 @@
+{
+  "id": "ai-builder",
+  "display_name": "AI Builder",
+  "priorities": {
+    "ai": 10,
+    "career": 9,
+    "portfolio": 9,
+    "product": 8,
+    "robotics": 7,
+    "developer-tools": 7,
+    "llm": 9
+  },
+  "skills": [
+    "python",
+    "llm-systems",
+    "backend",
+    "rag",
+    "automation"
+  ],
+  "interests": [
+    "ai-agents",
+    "robotics",
+    "developer-tools",
+    "interactive-ai"
+  ],
+  "constraints": [
+    "local-first-when-practical",
+    "explicit-external-actions",
+    "no-required-paid-services"
+  ],
+  "preferred_stack": [
+    "python",
+    "github-actions",
+    "json-state"
+  ],
+  "risk_tolerance": 4,
+  "candidate_generation_policy": {
+    "mode": "reviewed",
+    "allow_llm": false,
+    "max_candidates": 5
+  }
+}

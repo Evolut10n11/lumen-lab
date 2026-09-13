@@ -142,7 +142,7 @@ def test_read_only_cli_does_not_create_progress(tmp_path: Path, capsys) -> None:
     )
 
     assert code == 0
-    assert "Elaine Work Session" in capsys.readouterr().out
+    assert "Lumen Work Session" in capsys.readouterr().out
     assert not progress_path.exists()
 
 

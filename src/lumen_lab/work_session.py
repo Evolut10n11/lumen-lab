@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .mission_radar import Mission, ranked_missions
+from .mission_radar import Mission, mission_score, ranked_missions
+from .profile import Profile
 
 DEFAULT_TEMPLATES_PATH = Path("state/work_sessions.json")
 DEFAULT_PROGRESS_PATH = Path(".lumen/work_progress.json")
@@ -103,8 +104,12 @@ def load_progress(path: Path = DEFAULT_PROGRESS_PATH) -> dict[str, list[int]]:
     return progress
 
 
-def choose_mission(missions: list[Mission], mission_id: str | None = None) -> Mission:
-    active = ranked_missions(missions)
+def choose_mission(
+    missions: list[Mission],
+    mission_id: str | None = None,
+    profile: Profile | None = None,
+) -> Mission:
+    active = ranked_missions(missions, profile)
     if mission_id is None:
         if not active:
             raise ValueError("no active missions")
@@ -159,6 +164,7 @@ def session_snapshot(
     mission: Mission,
     template: WorkSessionTemplate,
     progress: dict[str, list[int]],
+    profile: Profile | None = None,
 ) -> dict[str, Any]:
     completed = progress.get(mission.id, [])
     validate_progress_for_template(completed, template)
@@ -171,7 +177,9 @@ def session_snapshot(
         "mission_id": mission.id,
         "title": mission.title,
         "why_now": mission.why_now,
-        "score": mission.score,
+        "score": mission_score(mission, profile),
+        "base_score": mission.score,
+        "profile_id": None if profile is None else profile.id,
         "focus_minutes": template.focus_minutes,
         "steps": [
             {"number": number, "text": text, "done": number in completed_set}

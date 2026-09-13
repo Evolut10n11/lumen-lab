@@ -10,7 +10,8 @@
     "momentum": 8,
     "effort": 5,
     "risk": 2,
-    "status": "active"
+    "status": "active",
+    "tags": ["career", "ai", "llm", "portfolio"]
   },
   {
     "id": "lumen-partner",
@@ -23,7 +24,8 @@
     "momentum": 9,
     "effort": 5,
     "risk": 2,
-    "status": "active"
+    "status": "active",
+    "tags": ["product", "ai", "developer-tools", "lumen"]
   },
   {
     "id": "robotci",
@@ -36,7 +38,8 @@
     "momentum": 8,
     "effort": 4,
     "risk": 2,
-    "status": "active"
+    "status": "active",
+    "tags": ["robotics", "developer-tools", "portfolio"]
   },
   {
     "id": "elaine-live",
@@ -49,6 +52,7 @@
     "momentum": 7,
     "effort": 8,
     "risk": 3,
-    "status": "active"
+    "status": "active",
+    "tags": ["ai", "llm", "streaming", "avatar", "product"]
   }
 ]
