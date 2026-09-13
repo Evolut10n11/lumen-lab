@@ -19,5 +19,12 @@
     "observed_value": 8,
     "learning_value": 9,
     "result": "Implemented an optional provider-neutral OpenAI-compatible planning adapter with deterministic fallback, backlog-ID validation, local-model support, CLI integration, tests, and safety documentation."
+  },
+  {
+    "experiment_id": "exp-004",
+    "expected_score": 6.2,
+    "observed_value": 8,
+    "learning_value": 9,
+    "result": "Implemented an explicit-allowlist subprocess containment layer with isolated temporary working directories, minimal environments, timeout enforcement, bounded output capture, structured results, CLI integration, tests, and an explicit threat model that does not overclaim OS isolation."
   }
 ]
