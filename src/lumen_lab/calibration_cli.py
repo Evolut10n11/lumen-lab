@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from .calibration import analyze_calibration
-from .store import LabStore
+from lumen_lab.ledger import analyze_calibration
+from lumen_lab.store import LabStore
 
 
 def main() -> int:
