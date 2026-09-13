@@ -184,7 +184,10 @@ def run_doctor(root: Path) -> DoctorReport:
             actual = (state / "SYNTHESIS.md").read_text(encoding="utf-8")
             expected = render_synthesis(experiments, outcomes, journal_text)
             if actual != expected:
-                raise ValueError("state/SYNTHESIS.md is stale; regenerate it with lumen-synthesize --write")
+                raise ValueError(
+                    "state/SYNTHESIS.md is stale; regenerate it with "
+                    "lumen-synthesize --write"
+                )
             checks.append(CheckResult("synthesis", True, "snapshot matches deterministic render"))
         except (OSError, ValueError) as exc:
             checks.append(CheckResult("synthesis", False, str(exc)))
