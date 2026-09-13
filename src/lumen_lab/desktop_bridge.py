@@ -11,7 +11,12 @@ from .context_learning import (
     clarification_for_context,
     observe_context_signal,
 )
+from .context_revision import revise_user_direction
 from .feedback import load_feedback, record_feedback
+from .github_context_missions import (
+    clear_github_context_missions,
+    reconcile_github_context_mission,
+)
 from .github_user_context import (
     GitHubPublicContextClient,
     apply_github_evidence,
@@ -240,6 +245,35 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         )
         return _dashboard_with_context(app, user_id, locale=locale)
 
+    if action == "revise_direction":
+        desired_change = payload.get("desired_change")
+        current_context = payload.get("current_context")
+        friction = payload.get("friction")
+        focus_minutes = payload.get("focus_minutes")
+        if not isinstance(desired_change, str):
+            raise ValueError("desired_change must be a string")
+        if current_context is not None and not isinstance(current_context, str):
+            raise ValueError("current_context must be a string or null")
+        if friction is not None and not isinstance(friction, str):
+            raise ValueError("friction must be a string or null")
+        if focus_minutes is not None and (
+            isinstance(focus_minutes, bool) or not isinstance(focus_minutes, int)
+        ):
+            raise ValueError("focus_minutes must be an integer or null")
+
+        workspace = app.workspace(user_id)
+        revision = revise_user_direction(
+            workspace,
+            desired_change=desired_change,
+            current_context=current_context,
+            friction=friction,
+            focus_minutes=focus_minutes,
+            locale=locale,
+        )
+        dashboard = _dashboard_with_context(app, user_id, locale=locale)
+        dashboard["revision"] = revision
+        return dashboard
+
     if action == "github_preview":
         app.workspace(user_id)
         return GitHubPublicContextClient().fetch(_github_username(payload))
@@ -249,6 +283,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         snapshot = GitHubPublicContextClient().fetch(_github_username(payload))
         save_github_snapshot(workspace.github_context_path, snapshot)
         apply_github_evidence(workspace.onboarding_context_path, snapshot)
+        reconcile_github_context_mission(workspace, snapshot, locale=locale)
         return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "github_refresh":
@@ -263,12 +298,14 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         snapshot = GitHubPublicContextClient().fetch(username)
         save_github_snapshot(workspace.github_context_path, snapshot)
         apply_github_evidence(workspace.onboarding_context_path, snapshot)
+        reconcile_github_context_mission(workspace, snapshot, locale=locale)
         return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "github_disconnect":
         workspace = app.workspace(user_id)
         disconnect_github(workspace.github_context_path)
         clear_github_evidence(workspace.onboarding_context_path)
+        clear_github_context_missions(workspace)
         return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "react":

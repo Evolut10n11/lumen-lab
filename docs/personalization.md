@@ -57,6 +57,30 @@ Completing an entire work session also records one positive signal automatically
 
 This means personalization improves even if the user never opens a settings screen.
 
+## Revising direction
+
+Behavioral learning should not trap a user inside their first onboarding answer. Sometimes the correct signal is not “less like this”; the person has explicitly changed direction.
+
+The desktop engine therefore supports an explicit `revise_direction` action. It accepts a new desired change and can optionally update the user's current context, friction, and realistic focus window.
+
+A direction revision is treated as stronger evidence than inferred behavior:
+
+```text
+explicit new direction
+→ replace the primary priority
+→ update matching context hypotheses
+→ rebuild current personalized missions
+→ reset progress tied to the old current mission set
+→ preserve long-lived feedback and optional integrations
+→ rebuild GitHub-derived work against the new goal when GitHub is connected
+```
+
+The revision is also appended to context history with its previous and new primary goal. This gives the product an auditable explanation for why recommendations changed instead of silently rewriting the user's history.
+
+When current context or friction is explicitly revised, their corresponding onboarding-derived interest or constraint is updated at the same time. The profile and hypothesis model therefore cannot drift into two contradictory versions of the user.
+
+This engine capability is intentionally separate from presentation. A desktop conversation, profile action, or future clarification flow can call the same operation without duplicating personalization logic in the GUI.
+
 ## State layout
 
 A typical mature workspace can contain:
