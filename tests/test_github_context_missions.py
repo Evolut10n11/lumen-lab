@@ -96,6 +96,26 @@ def test_refresh_clears_progress_for_replaced_github_mission(tmp_path) -> None:
     assert first.id not in progress
 
 
+def test_refresh_preserves_progress_when_project_and_priority_are_unchanged(tmp_path) -> None:
+    workspace = _workspace(tmp_path)
+    first = reconcile_github_context_mission(workspace, _snapshot("alice/lumen-lab"))
+    assert first is not None
+    template = next(
+        item for item in load_templates(workspace.work_sessions_path) if item.mission_id == first.id
+    )
+    mark_step_done(workspace.work_progress_path, first.id, 1, len(template.steps))
+
+    refreshed = reconcile_github_context_mission(
+        workspace,
+        _snapshot("alice/lumen-lab", "Python"),
+    )
+
+    assert refreshed is not None
+    assert refreshed.id == first.id
+    progress = json.loads(workspace.work_progress_path.read_text(encoding="utf-8"))
+    assert progress[first.id] == [1]
+
+
 def test_disconnect_removes_only_github_derived_work(tmp_path) -> None:
     workspace = _workspace(tmp_path)
     original_ids = [mission.id for mission in load_missions(workspace.missions_path)]
