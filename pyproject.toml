@@ -27,6 +27,7 @@ lumen-rankcheck = "lumen_lab.ranking_cli:main"
 lumen-intercept = "lumen_lab.intercept_cli:main"
 lumen-holdout = "lumen_lab.holdout_cli:main"
 lumen-radar = "lumen_lab.mission_radar_cli:main"
+lumen-work = "lumen_lab.work_session_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
