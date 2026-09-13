@@ -1,31 +1,24 @@
 # Lumen Lab
 
-Lumen Lab is a self-directed software R&D laboratory maintained by ChatGPT inside this repository.
+Lumen Lab is an auditable engine for turning a person's priorities into ranked missions, focused work sessions, reviewable experiments, and evidence for the next decision.
 
-The goal is not to build one fixed product. The repository is an evolving environment where ideas become experiments, experiments become reusable tools, and every important decision is recorded.
+The repository also remains a self-directed R&D laboratory for improving Lumen itself. Those two concerns are intentionally separated: repository-owned `state/` describes the product's own experiment history, while each real person's goals and progress live in an isolated machine-local workspace under `.lumen/users/<user-id>/`.
 
-## Operating model
+That boundary matters. Installing Lumen must never make a new user inherit the repository owner's career goals, interests, missions, or work history.
 
-1. Ideas enter the backlog with a hypothesis and an expected value.
-2. The planner scores them by impact, learning value, feasibility, novelty, and risk.
-3. The highest-value safe experiment becomes the next focus.
-4. Work is implemented in small, testable increments.
-5. Results are written to the lab journal and feed the next planning cycle.
-6. When no pending work remains, the local replenishment gate can propose a curated next generation without bypassing validation.
+## What Lumen does
 
-## Current capabilities
+For a user, the loop is:
 
-The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, run controlled subprocess experiments in a constrained temporary workspace, rank a small user-facing mission portfolio through Elaine Mission Radar, turn the current top mission into a focused work session, validate repository state, and inspect explicit experiment provenance.
+1. Capture explicit priorities, interests, skills, constraints, preferred tools, and risk tolerance.
+2. Build an isolated local profile and starter mission portfolio from those inputs.
+3. Rank missions against that user's profile instead of a global persona.
+4. Turn the best current mission into a bounded work session with a Definition of Done.
+5. Record progress only inside that user's workspace.
+6. Generate reviewable proposals from the same user-scoped evidence, with optional LLM enrichment only when the profile explicitly permits it.
+7. Use outcomes as evidence for later prioritization instead of silently rewriting the user's goals.
 
-Mission Radar reads `state/missions.json`, ranks only active missions with a deterministic value/urgency/leverage/momentum/effort/risk formula, and returns a concrete next action. It is read-only and never executes that action. See `docs/mission-radar.md`.
-
-`lumen-work` takes the current top mission, finds its reviewed template in `state/work_sessions.json`, and renders a bounded focus window, ordered checklist, progress, and Definition of Done. Reading a session is write-free. `--done <step>` writes only ignored local runtime progress under `.lumen/`; it does not mutate curated repository state or execute the task for you. See `docs/work-sessions.md`.
-
-`lumen-provenance` validates `state/provenance.json` and shows the primary repository artifacts, recorded outcome, and journal-section presence for completed experiments. It is local, deterministic, read-only, and is also checked by `lumen-doctor`. See `docs/provenance.md`.
-
-Backlog replenishment is dry-run by default and refuses to run while backlog or active work exists. It never calls external services or overwrites an existing experiment ID. See `docs/replenishment.md` for the policy.
-
-The subprocess layer is deliberately described as process containment rather than a strong security sandbox. It uses explicit executable allowlists, no shell, a minimal environment, temporary working directories, timeout enforcement, bounded output capture, and structured results. See `docs/sandbox.md` for the threat model and limitations.
+The repository-development loop is separate and keeps its existing deterministic experiment planner, calibration ledger, provenance index, state doctor, constrained subprocess runner, schema versioning, and GitHub integration.
 
 ## Quick start
 
@@ -34,75 +27,129 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate
 # Linux/macOS: source .venv/bin/activate
 python -m pip install -e .[dev]
+```
+
+Create your own local profile instead of using repository-owned demo state:
+
+```bash
+lumen-user --user alex init \
+  --name "Alex" \
+  --priority career=10 \
+  --priority health=7 \
+  --interest robotics \
+  --skill Python \
+  --constraint "5 hours per week"
+```
+
+PowerShell users can run the same command on one line:
+
+```powershell
+lumen-user --user alex init --name "Alex" --priority career=10 --priority health=7 --interest robotics --skill Python --constraint "5 hours per week"
+```
+
+Then use the same identity for personalized commands:
+
+```bash
+lumen-radar --user alex --top 3
+lumen-work --user alex
+lumen-work --user alex --done 1
+lumen-work --user alex --json
+lumen-propose --user alex
+```
+
+Instead of repeating `--user`, set `LUMEN_USER_ID=alex` in your environment. If neither is set, interactive commands resolve the local id `default` and require that workspace to be initialized first.
+
+## Personalization model
+
+A user's state is local and Git-ignored:
+
+```text
+.lumen/users/alex/
+├── profile.json
+├── missions.json
+├── work_sessions.json
+├── work_progress.json
+├── backlog.json
+├── outcomes.json
+└── journal.md
+```
+
+Only files that are actually used are created. Onboarding creates the profile, personalized missions, and matching work-session templates. Progress and proposal/lab files appear when those flows are used.
+
+`lumen-user` never reads hidden ChatGPT memory or copies `state/profile.json`. Its deterministic bootstrap is derived only from the inputs supplied for that user. Optional model-backed proposal enrichment remains explicit and policy-gated.
+
+See `docs/personalization.md` for identity resolution, storage rules, developer compatibility, and the application boundary.
+
+## Mission Radar
+
+`lumen-radar` ranks active missions using impact, urgency, leverage, momentum, effort, risk, and alignment with the selected user's weighted priorities. Two users can rank the same portfolio differently, and in normal interactive use they do not even share the same portfolio.
+
+Use an explicit mission file only for tests or deliberate developer workflows:
+
+```bash
+lumen-radar --state path/to/missions.json --top 3
+```
+
+See `docs/mission-radar.md`.
+
+## Focused work sessions
+
+`lumen-work` selects the best active mission for the current user, loads its reviewed/generated template, and renders a bounded checklist plus Definition of Done. Reading a session is write-free. `--done <step>` writes progress only to that user's local workspace.
+
+```bash
+lumen-work --user alex
+lumen-work --user alex --done 2
+```
+
+See `docs/work-sessions.md`.
+
+## Reviewable proposals
+
+`lumen-propose` turns the current profile and mission evidence into candidate experiments without automatically executing or accepting them. The default deterministic path requires no model or network. A profile may explicitly opt into OpenAI-compatible enrichment, and malformed or unavailable model output falls back safely.
+
+Normal interactive use is user-scoped. Supplying `--root <path>` without `--user` intentionally retains the repository-owned developer-state mode used by lab maintenance and deterministic tests.
+
+See `docs/proposals.md`.
+
+## Repository laboratory
+
+The original self-improvement laboratory remains available for developing Lumen itself:
+
+```bash
 lumen status
 lumen ledger
-lumen-radar
-lumen-work
 lumen-doctor
-lumen-provenance --experiment exp-013
+lumen-provenance
+lumen-schema
 pytest
 ```
 
-Start a focused session and record progress:
+The laboratory uses repository-owned `state/` for auditable experiment evidence. Backlog ideas are scored by impact, learning, feasibility, novelty, and risk; outcomes feed calibration and holdout checks; provenance links completed experiments to artifacts; schema and doctor commands validate the stored evidence.
 
-```bash
-lumen-work
-lumen-work --done 1
-lumen-work --done 2
-lumen-work --json
-```
+This repository state is not a default end-user persona.
 
-Choose another active mission explicitly:
+## Safety and product principles
 
-```bash
-lumen-work --mission robotci
-```
-
-Show more of the current mission portfolio:
-
-```bash
-lumen-radar --top 3
-lumen-radar --json
-```
-
-Inspect provenance:
-
-```bash
-lumen-provenance
-lumen-provenance --experiment exp-017
-lumen-provenance --json
-```
-
-Preview next-generation candidates when the queue is empty:
-
-```bash
-lumen replenish
-```
-
-A controlled sandbox example:
-
-```bash
-lumen sandbox --allow python --timeout 2 --json -- python -c "print('hello')"
-```
-
-## Principles
-
-- Prefer useful artifacts over demos.
-- Keep every autonomous action auditable.
-- Never require secrets for the default path.
-- Make risky or irreversible behavior opt-in.
-- Small experiments are better than speculative rewrites.
-- Tests and a readable journal are part of the product.
-- Do not claim stronger isolation than the operating system actually enforces.
-- New autonomous capabilities should first be introduced behind deterministic validation and dry-run behavior.
+- A real user owns a separate state boundary; no cross-user profile or progress fallback.
+- Personal state is ignored by Git by default.
+- Prefer explicit evidence over hidden personalization.
+- Optional model behavior must have deterministic validation and fallback.
+- Risky or irreversible actions stay opt-in.
+- Reading/ranking should not mutate state.
+- Tests, provenance, and readable decision history are part of the product.
+- Do not claim stronger sandboxing or autonomy than the underlying system actually provides.
 
 ## Repository map
 
-- `src/lumen_lab/` — core engine and CLI.
-- `state/` — backlog, experiment outcomes, provenance, mission portfolio, work-session templates, and journal data.
-- `.lumen/` — ignored machine-local runtime progress created only by explicit user actions.
-- `tests/` — executable behavior contracts.
-- `.github/workflows/` — CI and scheduled health checks.
-- `docs/` — architecture, safety notes, and operating guidance.
+- `src/lumen_lab/` — core engine and CLIs.
+- `src/lumen_lab/workspace.py` — user identity and isolated local paths.
+- `src/lumen_lab/personalization.py` — explicit-profile bootstrap into missions and work sessions.
+- `state/` — repository-owned Lumen R&D evidence, not a universal user profile.
+- `.lumen/users/` — ignored machine-local per-user state.
+- `tests/` — executable behavior contracts, including cross-user isolation tests.
+- `.github/workflows/` — CI and scheduled repository checks.
+- `docs/` — architecture, trust boundaries, schemas, and operating guidance.
 
-The project starts small on purpose. Its scope is allowed to evolve as the lab learns.
+## Direction
+
+The current interface is CLI-first so behavior remains easy to test and audit. The next product layer is an application UI built on the same `user_id -> profile -> missions -> work session -> feedback` boundary. Keeping that boundary in the core first prevents a polished interface from accidentally exposing one person's state to everyone else.
