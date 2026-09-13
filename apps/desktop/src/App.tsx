@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  answerClarification,
   bootstrap,
   completeStep,
   Dashboard,
@@ -269,10 +270,11 @@ function Sidebar({ screen, setScreen, dashboard }: {
   );
 }
 
-function HomeScreen({ dashboard, setScreen, onReact }: {
+function HomeScreen({ dashboard, setScreen, onReact, onClarify }: {
   dashboard: Dashboard;
   setScreen: (screen: Screen) => void;
   onReact: (action: "more_like_this" | "not_now" | "less_like_this", missionId: string) => void;
+  onClarify: (clarificationId: string, choice: string) => void;
 }) {
   const today = dashboard.today;
   const progress = today?.progress.percent ?? 0;
@@ -331,11 +333,33 @@ function HomeScreen({ dashboard, setScreen, onReact }: {
           <Sparkles size={20} />
           <div>
             <span className="card-kicker">Personalization</span>
-            <h3>{dashboard.context ? "Starting from your context" : dashboard.experience.learning.active ? "Lumen is adapting" : "No tuning needed"}</h3>
-            <p>{dashboard.context ? "These are starting assumptions. Your real choices will gradually outweigh them." : dashboard.experience.learning.message}</p>
+            <h3>{dashboard.context ? "Learning your pattern" : dashboard.experience.learning.active ? "Lumen is adapting" : "No tuning needed"}</h3>
+            <p>{dashboard.context ? "Your starting answers are only hypotheses. What you actually do now changes them." : dashboard.experience.learning.message}</p>
           </div>
         </aside>
       </div>
+
+      {dashboard.clarification && (
+        <article className="clarification-card">
+          <div className="clarification-icon"><Sparkles size={18} /></div>
+          <div className="clarification-copy">
+            <span className="card-kicker">Quick check</span>
+            <h3>{dashboard.clarification.prompt}</h3>
+            <p>I noticed a pattern and would rather ask once than keep guessing wrong.</p>
+            <div className="clarification-actions">
+              {dashboard.clarification.options.map((option) => (
+                <button
+                  key={option.choice}
+                  className="ghost-button"
+                  onClick={() => onClarify(dashboard.clarification!.id, option.choice)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </article>
+      )}
 
       <div className="section-heading">
         <div>
@@ -454,7 +478,7 @@ function ProfileScreen({ dashboard }: { dashboard: Dashboard }) {
           <div className="section-heading compact">
             <div>
               <span className="eyebrow">What Lumen understands so far</span>
-              <h2>Starting assumptions, not permanent settings</h2>
+              <h2>Living assumptions, updated by your behavior</h2>
             </div>
           </div>
           <div className="context-grid">
@@ -462,7 +486,7 @@ function ProfileScreen({ dashboard }: { dashboard: Dashboard }) {
               <div className="context-item" key={item.key}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
-                <small>Will be revised as Lumen sees what actually works for you.</small>
+                <small>{Math.round(item.confidence * 100)}% confidence · Lumen will revise this when the evidence changes.</small>
               </div>
             ))}
           </div>
@@ -471,7 +495,7 @@ function ProfileScreen({ dashboard }: { dashboard: Dashboard }) {
 
       <div className="learning-card profile-learning">
         <Sparkles size={20} />
-        <div><span className="card-kicker">Adaptive profile</span><h3>{dashboard.personalization.signal_count} signals learned</h3><p>Use Lumen normally. Finishing work and lightweight reactions refine future ranking automatically.</p></div>
+        <div><span className="card-kicker">Adaptive profile</span><h3>{dashboard.personalization.signal_count} preference signals</h3><p>Use Lumen normally. Finishing work and lightweight reactions now update both ranking and Lumen’s confidence in its assumptions.</p></div>
       </div>
     </section>
   );
@@ -500,7 +524,7 @@ export default function App() {
     if (screen === "mission") return <MissionScreen dashboard={dashboard} onComplete={handleComplete} />;
     if (screen === "activity") return <ActivityScreen dashboard={dashboard} />;
     if (screen === "profile") return <ProfileScreen dashboard={dashboard} />;
-    return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} />;
+    return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} onClarify={handleClarify} />;
   }, [dashboard, screen]);
 
   async function handleReact(action: "more_like_this" | "not_now" | "less_like_this", missionId: string) {
@@ -511,6 +535,19 @@ export default function App() {
       setDashboard(await reactToMission(dashboard.user.id, action, missionId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update your preference.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleClarify(clarificationId: string, choice: string) {
+    if (!dashboard || working) return;
+    setWorking(true);
+    setError(null);
+    try {
+      setDashboard(await answerClarification(dashboard.user.id, clarificationId, choice));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update Lumen’s understanding.");
     } finally {
       setWorking(false);
     }
