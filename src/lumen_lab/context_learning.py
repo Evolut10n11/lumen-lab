@@ -190,6 +190,7 @@ def answer_context_clarification(
         if choice_key == "keep_goal":
             goal["confidence"] = _clamp_confidence(max(float(goal["confidence"]), 0.76))
             goal["source"] = "confirmed_by_user"
+            effects["confirm_goal"] = goal["value"]
         elif choice_key == "pause_goal":
             goal["confidence"] = _clamp_confidence(float(goal["confidence"]) - 0.12)
             goal["source"] = "deprioritized_by_user"
