@@ -96,3 +96,13 @@ Expected score: 8.10. Observed score: 8.60. Calibration error: 0.50. Ten-outcome
 
 The intercept is intentionally not applied to `Experiment.score()`. Current evidence supports keeping it advisory until more outcomes confirm that the absolute-scale correction generalizes beyond this small sequential sample.
 
+## 2026-09-13 — exp-011 completed
+
+Implemented a frozen calibration baseline and deterministic holdout evaluator. The baseline captures intercept `+0.94` and the exact ten experiment IDs used to estimate it; future evaluation partitions outcomes by ID and never refits or rewrites that baseline. `lumen-holdout` reports raw and corrected holdout errors with per-experiment provenance.
+
+After implementation CI passed, `exp-011` became the first outcome outside the frozen training set. Its raw planner error is 0.55; applying the frozen intercept produces error 0.39, a 29.09% improvement. This is the first genuinely forward observation supporting the absolute-scale correction, but one holdout is intentionally not treated as deployment evidence.
+
+Expected score: 8.05. Observed score: 8.60. Calibration error: 0.55. Eleven-outcome calibration MAE: 0.90.
+
+The frozen baseline remains unchanged. Additional experiments can now accumulate comparable holdout evidence without contaminating the calibration estimate.
+
