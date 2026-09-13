@@ -38,3 +38,11 @@ Expected score: 6.20. Observed score: 8.30. Calibration error: 2.10.
 
 The main learning was also a boundary: subprocess containment is useful for removing ambient authority, but it is not an OS security sandbox. Allowed programs still retain the current user's operating-system permissions, so hostile code requires a container, VM, or OS-enforced sandbox. The original four-experiment bootstrap backlog is now complete. Four outcomes remain below the five-outcome threshold required before planner weight changes.
 
+## 2026-09-13 — exp-005 completed
+
+Implemented a deterministic backlog replenishment gate. `lumen replenish` is dry-run by default, refuses to operate while backlog or active work exists, validates every curated candidate through the normal experiment schema, and never overwrites an existing experiment ID. State mutation requires explicit `--apply` and remains local with no network, model endpoint, or secret requirement.
+
+Expected score: 8.20. Observed score: 9.00. Calibration error: 0.80. Five-outcome calibration MAE: 1.23.
+
+The lab now has enough completed outcomes to satisfy the minimum evidence threshold for a calibration review, but the weights were intentionally not changed inside the same experiment that crossed the threshold. Replenishment produced three second-generation candidates: `exp-006` planner calibration checkpoint, `exp-007` sandbox capability manifests, and `exp-008` journal synthesis snapshot. Deterministic ranking makes `exp-006` the next candidate with score 7.85.
+

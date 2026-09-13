@@ -11,10 +11,13 @@ The goal is not to build one fixed product. The repository is an evolving enviro
 3. The highest-value safe experiment becomes the next focus.
 4. Work is implemented in small, testable increments.
 5. Results are written to the lab journal and feed the next planning cycle.
+6. When no pending work remains, the local replenishment gate can propose a curated next generation without bypassing validation.
 
 ## Current capabilities
 
-The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, and run controlled subprocess experiments in a constrained temporary workspace.
+The project is intentionally local and dependency-light. The Python CLI can rank and complete experiments, track calibration outcomes, mirror owned backlog items to GitHub Issues, request optional OpenAI-compatible planning advice with deterministic fallback, replenish an empty backlog from a validated curated candidate set, and run controlled subprocess experiments in a constrained temporary workspace.
+
+Backlog replenishment is dry-run by default and refuses to run while backlog or active work exists. It never calls external services or overwrites an existing experiment ID. See `docs/replenishment.md` for the policy.
 
 The subprocess layer is deliberately described as process containment rather than a strong security sandbox. It uses explicit executable allowlists, no shell, a minimal environment, temporary working directories, timeout enforcement, bounded output capture, and structured results. See `docs/sandbox.md` for the threat model and limitations.
 
@@ -28,6 +31,12 @@ python -m pip install -e .[dev]
 lumen status
 lumen ledger
 pytest
+```
+
+Preview next-generation candidates when the queue is empty:
+
+```bash
+lumen replenish
 ```
 
 A controlled sandbox example:
@@ -45,6 +54,7 @@ lumen sandbox --allow python --timeout 2 --json -- python -c "print('hello')"
 - Small experiments are better than speculative rewrites.
 - Tests and a readable journal are part of the product.
 - Do not claim stronger isolation than the operating system actually enforces.
+- New autonomous capabilities should first be introduced behind deterministic validation and dry-run behavior.
 
 ## Repository map
 

@@ -26,5 +26,12 @@
     "observed_value": 8,
     "learning_value": 9,
     "result": "Implemented an explicit-allowlist subprocess containment layer with isolated temporary working directories, minimal environments, timeout enforcement, bounded output capture, structured results, CLI integration, tests, and an explicit threat model that does not overclaim OS isolation."
+  },
+  {
+    "experiment_id": "exp-005",
+    "expected_score": 8.2,
+    "observed_value": 9,
+    "learning_value": 9,
+    "result": "Implemented deterministic dry-run-first backlog replenishment with pending-work blocking, stable curated candidate IDs, duplicate protection, schema validation, explicit apply mode, tests, and operating documentation."
   }
 ]
