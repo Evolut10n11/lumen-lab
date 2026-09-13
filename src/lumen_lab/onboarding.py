@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .localization import is_russian, normalize_locale
 from .profile import normalized_label
 
 ONBOARDING_CONTEXT_VERSION = 1
@@ -85,8 +86,10 @@ def onboarding_context_payload(
     desired_change: str,
     friction: str = "",
     focus_minutes: int = 30,
+    locale: str = "en",
 ) -> dict[str, Any]:
     """Persist raw answers separately from the profile so later learning can revise hypotheses."""
+    locale = normalize_locale(locale)
     inputs = guided_profile_inputs(
         current_context=current_context,
         desired_change=desired_change,
@@ -98,25 +101,42 @@ def onboarding_context_payload(
     blocker = _clean_answer(friction, "friction", required=False)
     goal = next(iter(inputs["priorities"]))
 
+    if is_russian(locale):
+        labels = {
+            "primary_goal": "Что вы хотите изменить",
+            "current_context": "Что сейчас занимает ваше внимание",
+            "focus_window": "Реалистичное время на фокус",
+            "friction": "Что обычно мешает",
+        }
+        focus_value = f"{focus_minutes} минут"
+    else:
+        labels = {
+            "primary_goal": "What you want to change",
+            "current_context": "What has your attention now",
+            "focus_window": "Realistic focus window",
+            "friction": "What tends to get in the way",
+        }
+        focus_value = f"{focus_minutes} minutes"
+
     hypotheses: list[dict[str, Any]] = [
         {
             "key": "primary_goal",
-            "label": "What you want to change",
+            "label": labels["primary_goal"],
             "value": goal,
             "confidence": 0.78,
             "source": "first_run_explicit_goal",
         },
         {
             "key": "current_context",
-            "label": "What has your attention now",
+            "label": labels["current_context"],
             "value": context,
             "confidence": 0.86,
             "source": "first_run_explicit_context",
         },
         {
             "key": "focus_window",
-            "label": "Realistic focus window",
-            "value": f"{focus_minutes} minutes",
+            "label": labels["focus_window"],
+            "value": focus_value,
             "confidence": 0.95,
             "source": "first_run_explicit_choice",
         },
@@ -125,7 +145,7 @@ def onboarding_context_payload(
         hypotheses.append(
             {
                 "key": "friction",
-                "label": "What tends to get in the way",
+                "label": labels["friction"],
                 "value": blocker,
                 "confidence": 0.82,
                 "source": "first_run_explicit_constraint",
@@ -135,6 +155,7 @@ def onboarding_context_payload(
     return {
         "version": ONBOARDING_CONTEXT_VERSION,
         "source": "conversation",
+        "locale": locale,
         "answers": {
             "current_context": context,
             "desired_change": change,
