@@ -1,0 +1,46 @@
+[
+  {
+    "id": "exp-001",
+    "title": "GitHub Issues bridge",
+    "hypothesis": "Mirroring the internal backlog to GitHub Issues will make autonomous work visible and steerable.",
+    "impact": 8,
+    "learning": 7,
+    "feasibility": 8,
+    "novelty": 5,
+    "risk": 2,
+    "status": "backlog"
+  },
+  {
+    "id": "exp-002",
+    "title": "Optional LLM planner adapter",
+    "hypothesis": "A provider-neutral LLM adapter can improve idea generation without making secrets mandatory.",
+    "impact": 9,
+    "learning": 9,
+    "feasibility": 5,
+    "novelty": 7,
+    "risk": 5,
+    "status": "backlog"
+  },
+  {
+    "id": "exp-003",
+    "title": "Experiment benchmark ledger",
+    "hypothesis": "Tracking expected versus observed outcomes will improve future prioritization decisions.",
+    "impact": 8,
+    "learning": 9,
+    "feasibility": 9,
+    "novelty": 6,
+    "risk": 1,
+    "status": "backlog"
+  },
+  {
+    "id": "exp-004",
+    "title": "Isolated experiment sandbox",
+    "hypothesis": "A constrained subprocess sandbox will let experiments execute while keeping side effects explicit.",
+    "impact": 9,
+    "learning": 8,
+    "feasibility": 6,
+    "novelty": 8,
+    "risk": 7,
+    "status": "backlog"
+  }
+]
