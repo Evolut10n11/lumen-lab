@@ -29,6 +29,21 @@ A reference such as `actions/checkout@v4` can move after a pull request has been
 
 This is especially important for workflows with write permissions or release responsibilities. Pinning does not make an action, compiler, or dependency trustworthy by itself; it makes the selected revision explicit and reviewable.
 
+## Checkout credential persistence
+
+`actions/checkout` can persist the workflow token into the checkout's local Git configuration. Lumen disables that behavior with `persist-credentials: false` whenever later steps do not intentionally need authenticated Git commands.
+
+That rule applies to:
+
+- normal Python CI;
+- Desktop CI;
+- both Windows Installer checkouts, including release publication because `gh release` receives an explicit `GH_TOKEN`;
+- Branch hygiene, which receives an explicit `GITHUB_TOKEN` and talks to the GitHub API directly rather than pushing through Git.
+
+The scheduled `Lumen Pulse` workflow is the narrow documented exception. It intentionally commits a changed `state/PULSE.md` and executes `git push`, so its checkout currently keeps the credential required for that push. If Pulse is ever changed to publish through an explicit API/token path, it should join the non-persisting policy.
+
+`tests/test_workflow_action_pinning.py` enforces both the immutable action pins and this checkout credential policy, including the explicit Pulse exception.
+
 ## Updating an action
 
 1. Resolve the desired official release or maintained major tag in the action's upstream repository.
