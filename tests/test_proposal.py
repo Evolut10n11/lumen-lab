@@ -263,7 +263,7 @@ def test_cli_accept_requires_review_snapshot_and_changes_only_backlog(
     before_other = {
         path.name: path.read_bytes()
         for path in sorted(state.iterdir())
-        if path.is_file() and path.name != "backlog.json"
+        if path.is_file() and path.name not in {"backlog.json", ".lumen-json.lock"}
     }
 
     code = main(
@@ -285,6 +285,6 @@ def test_cli_accept_requires_review_snapshot_and_changes_only_backlog(
     after_other = {
         path.name: path.read_bytes()
         for path in sorted(state.iterdir())
-        if path.is_file() and path.name != "backlog.json"
+        if path.is_file() and path.name not in {"backlog.json", ".lumen-json.lock"}
     }
     assert after_other == before_other
