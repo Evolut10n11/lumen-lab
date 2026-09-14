@@ -11,6 +11,8 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from statistics import median
+from time import perf_counter
 from typing import Any
 
 NAME = "Иван Ёж 🧑‍💻"
@@ -23,6 +25,7 @@ FRICTION = "Мало времени — только полчаса"
 def call_engine(
     command: list[str], root: Path, action: str, locale: str = "ru",
     payload: dict[str, Any] | None = None,
+    timings: list[tuple[str, float]] | None = None,
 ) -> dict[str, Any]:
     request = {
         "action": action, "user_id": "text-contract", "locale": locale,
@@ -32,10 +35,14 @@ def call_engine(
     # the embedded PyInstaller interpreter ignores these environment variables.
     env = os.environ.copy()
     env.update(PYTHONUTF8="0", PYTHONIOENCODING="cp1251", PYTHONLEGACYWINDOWSSTDIO="1")
+    started = perf_counter()
     result = subprocess.run(
         command, input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
         capture_output=True, cwd=root, env=env, timeout=60, check=False,
     )
+    elapsed_ms = (perf_counter() - started) * 1000
+    if timings is not None:
+        timings.append((action, elapsed_ms))
     if result.returncode != 0:
         raise AssertionError(
             f"Engine failed: action={action}, exit={result.returncode}, "
@@ -72,18 +79,25 @@ def check_dashboard(data: dict[str, Any], locale: str) -> None:
 
 def exercise(command: list[str], root: Path) -> None:
     root.mkdir(parents=True)
-    first = call_engine(command, root, "bootstrap")
+    timings: list[tuple[str, float]] = []
+    first = call_engine(command, root, "bootstrap", timings=timings)
     assert first["initialized"] is False
     data = call_engine(command, root, "guided_onboard", payload={
         "display_name": NAME, "current_context": CONTEXT, "desired_change": CHANGE,
         "friction": FRICTION, "focus_minutes": 30,
-    })
+    }, timings=timings)
     check_dashboard(data, "ru")
     mission_id = data["today"]["mission_id"]
-    call_engine(command, root, "complete_step", payload={"mission_id": mission_id, "step": 1})
+    call_engine(
+        command,
+        root,
+        "complete_step",
+        payload={"mission_id": mission_id, "step": 1},
+        timings=timings,
+    )
     # Each call is a new process; this checks persistence, not an in-memory echo.
     for locale in ("ru", "en", "ru"):
-        restarted = call_engine(command, root, "bootstrap", locale)
+        restarted = call_engine(command, root, "bootstrap", locale, timings=timings)
         assert restarted["initialized"] is True
         dashboard = restarted["dashboard"]
         check_dashboard(dashboard, locale)
@@ -96,6 +110,11 @@ def exercise(command: list[str], root: Path) -> None:
     for path in workspace.glob("*.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         assert "\ufffd" not in json.dumps(data, ensure_ascii=False)
+    samples = [elapsed for _, elapsed in timings]
+    print(
+        "TIMING: fresh engine process "
+        f"median={median(samples):.0f} ms max={max(samples):.0f} ms samples={len(samples)}"
+    )
     print("PASS: Unicode names/UI, emoji, saved answers, restart, locale switch and progress")
 
 

@@ -321,14 +321,13 @@ export function disconnectGitHub(userId: string): Promise<Dashboard> {
   return request<Dashboard>("github_disconnect", userId);
 }
 
-export async function completeStep(
+export function completeStep(
   userId: string,
   missionId: string,
   step: number,
 ): Promise<Dashboard> {
-  await request("complete_step", userId, {
+  return request<Dashboard>("complete_step", userId, {
     step,
     mission_id: missionId,
   });
-  return request<Dashboard>("dashboard", userId);
 }

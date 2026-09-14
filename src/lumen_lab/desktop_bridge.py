@@ -370,7 +370,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
                 mission_tags=list(mission.tags),
                 signal="mission_completed",
             )
-        return snapshot
+        return _dashboard_with_context(app, user_id, locale=locale)
 
     if action == "clarify_context":
         clarification_id = payload.get("clarification_id")
