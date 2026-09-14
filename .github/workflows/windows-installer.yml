@@ -32,20 +32,15 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Validate release tag version
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
-        run: |
-          $config = Get-Content apps\desktop\src-tauri\tauri.conf.json -Raw | ConvertFrom-Json
-          $expected = "v$($config.version)"
-          if ("${{ github.ref_name }}" -ne $expected) {
-            throw "Release tag ${{ github.ref_name }} does not match desktop version $($config.version); expected $expected."
-          }
-
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
           cache: pip
+
+      - name: Validate desktop release versions
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: python packaging/check_release.py --ref "$env:RELEASE_REF"
 
       - name: Install Lumen desktop engine build tools
         run: python -m pip install -e ".[desktop]"
@@ -159,6 +154,10 @@ jobs:
             echo "GitHub Release $tag already exists; nothing to publish."
             exit 0
           fi
+
+          # A pre-existing tag must identify the exact commit used for this installer.
+          # Network/auth failures must stop publication rather than look like a missing tag.
+          python3 packaging/check_release.py --ref "$GITHUB_REF" --sha "$GITHUB_SHA"
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             gh release create "$tag" release-assets/*.exe \
