@@ -1,0 +1,2 @@
+This file exists only to make the first automatic release publication flow explicit in Git history.
+Future releases are triggered by a desktop version bump plus a qualifying Windows installer workflow run on main.
