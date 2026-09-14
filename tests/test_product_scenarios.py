@@ -174,3 +174,59 @@ def test_repeated_rejection_makes_lumen_question_its_goal_assumption(
     assert clarification is not None
     assert clarification["id"] == "primary_goal_fit"
     assert "всё ещё направление" in clarification["prompt"]
+
+
+def test_release_journey_survives_deferral_completion_revision_and_restart(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    dashboard = _request(
+        "guided_onboard",
+        display_name="Аня",
+        current_context="Развиваю свой продукт после основной работы",
+        desired_change="Хочу довести полезный сценарий до пользователей",
+        friction="Легко распыляюсь",
+        focus_minutes=30,
+    )
+    mission_id = dashboard["today"]["mission_id"]
+    step_count = dashboard["today"]["progress"]["total"]
+
+    dashboard = _request("select_companion", character_id="kiro")
+    assert dashboard["companion"]["selected"]["id"] == "kiro"
+
+    dashboard = _request("react", reaction="not_now", mission_id=mission_id)
+    assert mission_id in {mission["id"] for mission in dashboard["paused"]}
+    dashboard = _request("resume_mission", mission_id=mission_id)
+    assert mission_id not in {mission["id"] for mission in dashboard["paused"]}
+
+    for step in range(1, step_count + 1):
+        dashboard = _request("complete_step", mission_id=mission_id, step=step)
+    earned_xp = step_count * 5 + 25
+    assert dashboard["companion"]["total_xp"] == earned_xp
+    assert dashboard["summary"]["completed_missions"] == 1
+
+    dashboard = _request(
+        "revise_direction",
+        desired_change="Хочу подготовить понятный запуск для первых пользователей",
+        current_context="Первый сценарий уже проверен",
+        friction="Нужно удержать узкий объём",
+        focus_minutes=15,
+    )
+    assert dashboard["companion"]["selected"]["id"] == "kiro"
+    assert dashboard["companion"]["total_xp"] == earned_xp
+    assert dashboard["today"]["focus_minutes"] == 15
+
+    revised_mission_id = dashboard["today"]["mission_id"]
+    dashboard = _request(
+        "complete_step",
+        mission_id=revised_mission_id,
+        step=1,
+    )
+    assert dashboard["companion"]["total_xp"] == earned_xp + 5
+
+    restarted = _request("bootstrap")
+    assert restarted["initialized"] is True
+    assert restarted["dashboard"]["companion"]["selected"]["id"] == "kiro"
+    assert restarted["dashboard"]["companion"]["total_xp"] == earned_xp + 5
