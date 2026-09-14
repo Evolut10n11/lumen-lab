@@ -88,7 +88,7 @@ The desktop shell, frontend build, Python bridge, Tauri host, standalone engine 
 Lumen now produces a normal Windows setup executable:
 
 ```text
-Lumen_0.1.0_x64-setup.exe
+Lumen_0.1.1_x64-setup.exe
 ```
 
 The user path is:
@@ -103,11 +103,11 @@ Download Lumen
 
 Python, Node.js, Rust, Git, PowerShell, and a virtual environment are not required on the user's machine. The Python Lumen engine is packaged as a standalone executable and bundled into the Tauri application.
 
-The CI-built installer is available as a **Windows Installer** workflow artifact. Tagged versions (`v*`) are configured to publish the generated setup executable to GitHub Releases automatically.
+The CI-built installer is available as a **Windows Installer** workflow artifact. Tagged versions (`v*`) are configured to publish the generated setup executable to GitHub Releases automatically. Release tags must exactly match the desktop version before publication is allowed.
 
 Development installers are currently unsigned, so Windows SmartScreen may show a publisher/reputation warning until production code signing is added.
 
-See [Windows installation](docs/windows-installation.md) and [Desktop application](docs/desktop-app.md).
+See [Windows installation](docs/windows-installation.md), [Desktop application](docs/desktop-app.md), and [Desktop release versioning](docs/release-versioning.md).
 
 ## Optional context connections
 
