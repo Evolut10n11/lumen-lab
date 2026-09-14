@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import shutil
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from .state_io import write_json_atomic
 
-_LEGACY_ENCODINGS = ("cp1251", "latin1")
+_LEGACY_ENCODINGS = ("cp1251", "cp1252", "latin1")
 _MOJIBAKE_MARKERS = ("Р", "С", "Ð", "Ñ", "Ã", "Â", "â")
 _MAX_REPAIR_PASSES = 3
 
@@ -58,11 +59,16 @@ def repair_mojibake_json(value: Any) -> Any:
     if isinstance(value, list):
         return [repair_mojibake_json(item) for item in value]
     if isinstance(value, dict):
+        keys = [
+            repair_mojibake_text(key) if isinstance(key, str) else key
+            for key in value
+        ]
+        key_counts = Counter(keys)
         repaired: dict[Any, Any] = {}
-        for key, item in value.items():
-            repaired_key = repair_mojibake_text(key) if isinstance(key, str) else key
-            # Never lose a value if a repaired key would collide with an existing one.
-            if repaired_key in repaired and repaired_key != key:
+        for (key, item), repaired_key in zip(value.items(), keys, strict=True):
+            # If old and new spellings coexist, retain both original keys. This
+            # preserves both values regardless of their insertion order.
+            if key_counts[repaired_key] > 1:
                 repaired_key = key
             repaired[repaired_key] = repair_mojibake_json(item)
         return repaired

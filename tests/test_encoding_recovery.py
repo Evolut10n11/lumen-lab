@@ -49,11 +49,33 @@ def test_repair_mojibake_text_is_targeted_and_idempotent() -> None:
     assert repair_mojibake_text(repair_mojibake_text(broken)) == "Продвинуться в цели"
 
 
+def test_repair_mojibake_text_supports_windows_1252() -> None:
+    original = "Завершить макет"
+    broken = original.encode("utf-8").decode("cp1252")
+
+    assert "—" in broken
+    assert repair_mojibake_text(broken) == original
+
+
 def test_repair_mojibake_json_repairs_keys_and_nested_values() -> None:
     original = {"Цель": ["Русский текст", {"Описание": "Сделать проект"}]}
     broken = _corrupt_strings(original)
 
     assert repair_mojibake_json(broken) == original
+
+
+@pytest.mark.parametrize("correct_first", [False, True])
+def test_repair_mojibake_json_never_drops_colliding_key_values(
+    correct_first: bool,
+) -> None:
+    correct = "Цель"
+    broken = _legacy_decode(correct)
+    pairs = [(correct, 2), (broken, 1)] if correct_first else [(broken, 1), (correct, 2)]
+
+    repaired = repair_mojibake_json(dict(pairs))
+
+    assert repaired == dict(pairs)
+    assert len(repaired) == 2
 
 
 def test_bootstrap_repairs_legacy_windows_state_without_reonboarding(

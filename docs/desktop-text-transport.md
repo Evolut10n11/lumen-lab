@@ -23,6 +23,6 @@ These are engine/transport checks, not a claim that the Windows WebView was inte
 
 ## Existing user data
 
-On startup, Lumen repairs the lossless UTF-8/Windows-1251 or UTF-8/Latin-1 mojibake patterns produced by older desktop builds. It scans only valid per-user JSON, requires a high-confidence marker reduction, writes repaired state atomically, and keeps each original file beside it with a `.before-encoding-repair` suffix. Normal Russian and Western text is left unchanged, and users do not need to repeat onboarding or delete AppData.
+On startup, Lumen repairs the lossless UTF-8/Windows-1251, UTF-8/Windows-1252, or UTF-8/Latin-1 mojibake patterns produced by older desktop builds. It scans only valid per-user JSON, requires a high-confidence marker reduction, preserves colliding key spellings, writes repaired state atomically, and keeps each original file beside it with a `.before-encoding-repair` suffix. Normal Russian and Western text is left unchanged, and users do not need to repeat onboarding or delete AppData.
 
 Characters that an older decoder replaced or discarded cannot be reconstructed. Those uncommon lossy cases remain visible rather than being guessed silently.
