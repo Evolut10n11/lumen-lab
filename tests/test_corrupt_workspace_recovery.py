@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from lumen_lab.app_service import LumenApplication
+from lumen_lab.profile import load_profile
+from lumen_lab.workspace import UserWorkspace
+
+
+def _broken_workspace(root: Path, content: str = "") -> UserWorkspace:
+    workspace = UserWorkspace.from_root(root, "default").ensure()
+    workspace.profile_path.write_text(content, encoding="utf-8")
+    return workspace
+
+
+def test_bootstrap_recovers_from_empty_profile_left_by_failed_first_run(tmp_path: Path) -> None:
+    workspace = _broken_workspace(tmp_path)
+
+    result = LumenApplication(tmp_path).bootstrap("default", locale="ru")
+
+    assert result["initialized"] is False
+    assert result["dashboard"] is None
+    assert result["onboarding"] is not None
+    assert not workspace.profile_path.exists()
+    assert list(workspace.directory.glob("profile.corrupt-*.json"))
+
+
+def test_bootstrap_recovers_from_malformed_profile_json(tmp_path: Path) -> None:
+    workspace = _broken_workspace(tmp_path, "{")
+
+    result = LumenApplication(tmp_path).bootstrap("default")
+
+    assert result["initialized"] is False
+    assert not workspace.profile_path.exists()
+    backups = list(workspace.directory.glob("profile.corrupt-*.json"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == "{"
+
+
+def test_user_can_onboard_after_corrupt_profile_is_quarantined(tmp_path: Path) -> None:
+    workspace = _broken_workspace(tmp_path)
+    app = LumenApplication(tmp_path)
+
+    assert app.bootstrap("default")["initialized"] is False
+    dashboard = app.onboard(
+        "default",
+        display_name="Иван",
+        priorities={"Подготовиться к собеседованию": 10},
+        locale="ru",
+    )
+
+    assert dashboard["user"]["display_name"] == "Иван"
+    assert load_profile(workspace.profile_path).display_name == "Иван"
