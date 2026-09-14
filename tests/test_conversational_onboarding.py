@@ -27,9 +27,7 @@ def test_guided_profile_inputs_turn_normal_language_into_safe_starter_profile() 
     )
 
     assert inputs["priorities"] == {"Get a stronger AI role": 10}
-    assert inputs["interests"] == (
-        "I work as a backend developer and prepare for interviews",
-    )
+    assert inputs["interests"] == ("career preparation and visible proof of skill",)
     assert inputs["constraints"] == (
         "I keep spreading attention across too many things",
     )
@@ -88,3 +86,32 @@ def test_guided_onboarding_rejects_fake_focus_window() -> None:
             desired_change="Grow",
             focus_minutes=45,
         )
+
+
+def test_russian_context_is_reduced_to_a_useful_scenario_theme() -> None:
+    career = guided_profile_inputs(
+        current_context="Работаю разработчиком и готовлюсь к собеседованиям",
+        desired_change="Хочу получить сильную AI-роль",
+    )
+    study = guided_profile_inputs(
+        current_context="Учусь в университете, впереди сессия и диплом",
+        desired_change="Хочу закрыть сессию без долгов",
+    )
+    creative = guided_profile_inputs(
+        current_context="После работы рисую и хочу публиковать иллюстрации",
+        desired_change="Хочу собрать первые отзывы на свои работы",
+    )
+
+    assert career["interests"] == ("карьерная подготовка и доказательства навыков",)
+    assert study["interests"] == ("ближайший учебный дедлайн",)
+    assert creative["interests"] == ("публикация одной законченной творческой работы",)
+
+
+def test_vague_goal_becomes_a_clarification_mission_instead_of_fake_precision() -> None:
+    inputs = guided_profile_inputs(
+        current_context="Всё навалилось, работа и бытовые дела",
+        desired_change="Хочу чтобы стало лучше",
+        friction="Не знаю с чего начать",
+    )
+
+    assert inputs["priorities"] == {"Уточнить, что именно должно измениться": 10}

@@ -1,5 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type Locale = "en" | "ru";
+
+let requestLocale: Locale = "en";
+
+export function setRequestLocale(locale: Locale): void {
+  requestLocale = locale;
+}
+
 export type QuickAction = {
   action: "more_like_this" | "not_now" | "less_like_this";
   label: string;
@@ -23,6 +31,7 @@ export type ContextHypothesis = {
 export type UserContext = {
   version: number;
   source: "conversation";
+  locale?: Locale;
   answers: {
     current_context: string;
     desired_change: string;
@@ -113,6 +122,7 @@ export type GitHubIntegration = {
 
 export type Dashboard = {
   schema_version: number;
+  locale?: Locale;
   user: {
     id: string;
     display_name: string;
@@ -173,6 +183,7 @@ export type Dashboard = {
 
 export type Bootstrap = {
   schema_version: number;
+  locale?: Locale;
   selected_user_id: string;
   initialized: boolean;
   users: Array<{ id: string; display_name: string }>;
@@ -219,7 +230,7 @@ async function request<T>(
   let raw: string;
   try {
     raw = await invoke<string>("lumen_request", {
-      request: JSON.stringify({ action, user_id: userId, payload }),
+      request: JSON.stringify({ action, user_id: userId, payload, locale: requestLocale }),
     });
   } catch (error) {
     throw nativeError(error);
@@ -228,7 +239,7 @@ async function request<T>(
   let response: BridgeResponse<T>;
   try {
     response = JSON.parse(raw) as BridgeResponse<T>;
-  } catch (error) {
+  } catch {
     throw new Error(`Lumen engine returned an unreadable response: ${raw.slice(0, 500)}`);
   }
 

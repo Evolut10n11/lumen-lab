@@ -7,9 +7,11 @@ from typing import Any
 
 from .github_context_missions import reconcile_github_context_mission
 from .github_user_context import load_github_snapshot
+from .localization import is_russian, locale_from_context, normalize_locale
 from .onboarding import (
     ALLOWED_FOCUS_MINUTES,
     ONBOARDING_CONTEXT_VERSION,
+    _context_theme,
     apply_focus_minutes,
     goal_label,
     load_onboarding_context,
@@ -191,6 +193,7 @@ def _revision_context(
     current_context: str | None,
     friction: str | None,
     focus_minutes: int,
+    locale: str,
 ) -> dict[str, Any]:
     context = (
         copy.deepcopy(existing)
@@ -202,7 +205,10 @@ def _revision_context(
             "hypotheses": [],
         }
     )
+    locale = normalize_locale(locale)
+    russian = is_russian(locale)
     context["version"] = ONBOARDING_CONTEXT_VERSION
+    context["locale"] = locale
 
     answers = context.get("answers")
     if not isinstance(answers, dict):
@@ -214,7 +220,7 @@ def _revision_context(
     _set_hypothesis(
         context,
         key="primary_goal",
-        label="What you want to change",
+        label="Что вы хотите изменить" if russian else "What you want to change",
         value=new_goal,
         confidence=0.99,
         source="explicit_revision",
@@ -222,8 +228,8 @@ def _revision_context(
     _set_hypothesis(
         context,
         key="focus_window",
-        label="Realistic focus window",
-        value=f"{focus_minutes} minutes",
+        label="Реалистичное время на фокус" if russian else "Realistic focus window",
+        value=f"{focus_minutes} минут" if russian else f"{focus_minutes} minutes",
         confidence=0.98,
         source="explicit_revision",
     )
@@ -234,7 +240,11 @@ def _revision_context(
             _set_hypothesis(
                 context,
                 key="current_context",
-                label="What has your attention now",
+                label=(
+                    "Что сейчас занимает ваше внимание"
+                    if russian
+                    else "What has your attention now"
+                ),
                 value=current_context,
                 confidence=0.96,
                 source="explicit_revision",
@@ -248,7 +258,7 @@ def _revision_context(
             _set_hypothesis(
                 context,
                 key="friction",
-                label="What tends to get in the way",
+                label="Что обычно мешает" if russian else "What tends to get in the way",
                 value=friction,
                 confidence=0.94,
                 source="explicit_revision",
@@ -296,11 +306,17 @@ def revise_user_direction(
     current_context: str | None = None,
     friction: str | None = None,
     focus_minutes: int | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """Apply an explicit direction change and rebuild only current recommendation state."""
     workspace.require_initialized()
     profile = load_profile(workspace.profile_path)
     existing_context = load_onboarding_context(workspace.onboarding_context_path)
+    resolved_locale = (
+        locale_from_context(existing_context)
+        if locale is None
+        else normalize_locale(locale)
+    )
 
     desired_change = _clean_text(desired_change, "desired_change")
     current_context = _optional_text(current_context, "current_context")
@@ -314,13 +330,21 @@ def revise_user_direction(
 
     previous_context = _answer_text(existing_context, "current_context")
     previous_friction = _answer_text(existing_context, "friction")
+    previous_theme = _context_theme(previous_context, old_goal) if previous_context else None
     interests = profile.interests
     constraints = profile.constraints
     if current_context is not None:
         interests = _replace_inferred_label(
             interests,
+            old_value=previous_theme,
+            new_value=None,
+            exclude=new_goal,
+        )
+        new_theme = _context_theme(current_context, new_goal) if current_context else None
+        interests = _replace_inferred_label(
+            interests,
             old_value=previous_context,
-            new_value=current_context or None,
+            new_value=new_theme,
             exclude=new_goal,
         )
     if friction is not None:
@@ -352,16 +376,26 @@ def revise_user_direction(
         current_context=current_context,
         friction=friction,
         focus_minutes=chosen_focus,
+        locale=resolved_locale,
     )
 
-    initialize_workspace(workspace, revised_profile, replace=True)
+    initialize_workspace(
+        workspace,
+        revised_profile,
+        replace=True,
+        locale=resolved_locale,
+    )
     apply_focus_minutes(workspace.work_sessions_path, chosen_focus)
     save_onboarding_context(workspace.onboarding_context_path, context)
 
     github_snapshot = load_github_snapshot(workspace.github_context_path)
     github_mission = None
     if github_snapshot is not None:
-        github_mission = reconcile_github_context_mission(workspace, github_snapshot)
+        github_mission = reconcile_github_context_mission(
+            workspace,
+            github_snapshot,
+            locale=resolved_locale,
+        )
 
     return {
         "old_goal": old_goal,

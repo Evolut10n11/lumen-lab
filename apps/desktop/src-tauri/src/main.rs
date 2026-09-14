@@ -3,20 +3,27 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use tauri::path::BaseDirectory;
 use tauri::Manager;
 
 fn bundled_engine_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
+    for relative in ["lumen-engine.exe", "resources/lumen-engine.exe"] {
+        if let Ok(path) = app.path().resolve(relative, BaseDirectory::Resource) {
+            candidates.push(path);
+        }
+    }
+
     if let Ok(resource_dir) = app.path().resource_dir() {
-        candidates.push(resource_dir.join("resources").join("lumen-engine.exe"));
         candidates.push(resource_dir.join("lumen-engine.exe"));
+        candidates.push(resource_dir.join("resources").join("lumen-engine.exe"));
     }
 
     if let Ok(current_exe) = env::current_exe() {
-        if let Some(exe_dir) = current_exe.parent() {
-            candidates.push(exe_dir.join("resources").join("lumen-engine.exe"));
-            candidates.push(exe_dir.join("lumen-engine.exe"));
+        if let Some(parent) = current_exe.parent() {
+            candidates.push(parent.join("lumen-engine.exe"));
+            candidates.push(parent.join("resources").join("lumen-engine.exe"));
         }
     }
 
@@ -25,10 +32,20 @@ fn bundled_engine_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
     candidates
 }
 
-fn bundled_engine_path(app: &tauri::AppHandle) -> Option<PathBuf> {
-    bundled_engine_candidates(app)
-        .into_iter()
-        .find(|candidate| candidate.is_file())
+fn bundled_engine_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let candidates = bundled_engine_candidates(app);
+    if let Some(path) = candidates.iter().find(|path| path.is_file()) {
+        return Ok(path.clone());
+    }
+
+    let checked = candidates
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join("; ");
+    Err(format!(
+        "Lumen's bundled engine is missing from this installation. Checked: {checked}. Reinstall Lumen and try again."
+    ))
 }
 
 fn engine_command(app: &tauri::AppHandle) -> Result<(Command, String), String> {
@@ -38,27 +55,21 @@ fn engine_command(app: &tauri::AppHandle) -> Result<(Command, String), String> {
         return Ok((command, format!("Python override '{python}'")));
     }
 
-    if let Some(engine) = bundled_engine_path(app) {
-        let label = engine.display().to_string();
-        return Ok((Command::new(engine), label));
-    }
-
     if cfg!(debug_assertions) {
+        if let Ok(engine) = bundled_engine_path(app) {
+            let label = engine.display().to_string();
+            return Ok((Command::new(engine), label));
+        }
+
         let python = "python".to_string();
         let mut command = Command::new(&python);
         command.arg("-m").arg("lumen_lab.desktop_bridge");
         return Ok((command, "development Python engine".to_string()));
     }
 
-    let searched = bundled_engine_candidates(app)
-        .into_iter()
-        .map(|path| path.display().to_string())
-        .collect::<Vec<_>>()
-        .join("; ");
-
-    Err(format!(
-        "Lumen's bundled engine is missing from this installation. Searched: {searched}"
-    ))
+    let engine = bundled_engine_path(app)?;
+    let label = engine.display().to_string();
+    Ok((Command::new(engine), label))
 }
 
 #[tauri::command]

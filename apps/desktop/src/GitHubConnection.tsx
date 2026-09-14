@@ -1,21 +1,25 @@
 import { useEffect, useState } from "react";
 import { Github, Loader2, RefreshCw, Unplug } from "lucide-react";
+import { copy, errorMessage } from "./i18n";
 import {
   connectGitHub,
   Dashboard,
   disconnectGitHub,
   GitHubContextSnapshot,
+  Locale,
   previewGitHub,
   refreshGitHub,
 } from "./lib/lumen";
 
 type Props = {
   dashboard: Dashboard;
+  locale: Locale;
   onDashboard: (dashboard: Dashboard) => void;
 };
 
-export default function GitHubConnection({ dashboard, onDashboard }: Props) {
+export default function GitHubConnection({ dashboard, locale, onDashboard }: Props) {
   const integration = dashboard.integrations?.github;
+  const t = copy(locale).github;
   const [username, setUsername] = useState(integration?.account?.username ?? "");
   const [preview, setPreview] = useState<GitHubContextSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,7 +38,7 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
     try {
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "GitHub context could not be updated.");
+      setError(errorMessage(err, t.updateError));
     } finally {
       setBusy(false);
     }
@@ -66,26 +70,23 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
           <div className="github-context-title">
             <div className="github-mark"><Github size={20} /></div>
             <div>
-              <span className="card-kicker">Connected context</span>
+              <span className="card-kicker">{t.connectedContext}</span>
               <h3>@{integration.account.username}</h3>
             </div>
           </div>
-          <span className="connection-status">Public context</span>
+          <span className="connection-status">{t.publicContext}</span>
         </div>
 
-        <p className="github-context-description">
-          Lumen is using only public GitHub evidence from this profile. No GitHub token is stored.
-          This context sits beside your own answers; it does not overwrite them.
-        </p>
+        <p className="github-context-description">{t.connectedBody}</p>
 
         {integration.active_repositories.length > 0 && (
           <div className="github-repo-list">
-            <span className="github-section-label">Recently active repositories</span>
+            <span className="github-section-label">{t.recentRepos}</span>
             {integration.active_repositories.slice(0, 3).map((repo) => (
               <div className="github-repo-row" key={repo.full_name}>
                 <div>
                   <strong>{repo.full_name}</strong>
-                  <span>{repo.description ?? "No repository description"}</span>
+                  <span>{repo.description ?? t.noDescription}</span>
                 </div>
                 {repo.language && <small>{repo.language}</small>}
               </div>
@@ -106,10 +107,10 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
         <div className="github-actions">
           <button className="ghost-button" onClick={handleRefresh} disabled={busy}>
             {busy ? <Loader2 className="spin" size={15} /> : <RefreshCw size={15} />}
-            Refresh
+            {t.refresh}
           </button>
           <button className="text-button danger-text" onClick={handleDisconnect} disabled={busy}>
-            <Unplug size={14} /> Disconnect
+            <Unplug size={14} /> {t.disconnect}
           </button>
         </div>
       </section>
@@ -122,16 +123,13 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
         <div className="github-context-title">
           <div className="github-mark"><Github size={20} /></div>
           <div>
-            <span className="card-kicker">Optional context</span>
+            <span className="card-kicker">{t.optionalContext}</span>
             <h3>GitHub</h3>
           </div>
         </div>
       </div>
 
-      <p className="github-context-description">
-        Let Lumen look at the public work on a GitHub profile before you decide whether to use it.
-        Nothing is saved until you confirm the preview.
-      </p>
+      <p className="github-context-description">{t.intro}</p>
 
       <div className="github-connect-row">
         <input
@@ -140,8 +138,8 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
             setUsername(event.target.value);
             setPreview(null);
           }}
-          placeholder="GitHub username"
-          aria-label="GitHub username"
+          placeholder={t.username}
+          aria-label={t.username}
         />
         <button
           className="ghost-button"
@@ -149,7 +147,7 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
           onClick={handlePreview}
         >
           {busy ? <Loader2 className="spin" size={15} /> : <Github size={15} />}
-          Preview
+          {t.preview}
         </button>
       </div>
 
@@ -159,9 +157,9 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
         <div className="github-preview">
           <div className="github-preview-account">
             <div>
-              <span>GitHub found</span>
+              <span>{t.found}</span>
               <strong>{preview.account.name ?? `@${preview.account.username}`}</strong>
-              <small>@{preview.account.username} · {preview.account.public_repos} public repos</small>
+              <small>@{preview.account.username} · {preview.account.public_repos} {t.publicRepos}</small>
             </div>
             {preview.signals.primary_language && (
               <span className="connection-status">{preview.signals.primary_language}</span>
@@ -173,23 +171,21 @@ export default function GitHubConnection({ dashboard, onDashboard }: Props) {
               <div className="github-repo-row" key={repo.full_name}>
                 <div>
                   <strong>{repo.full_name}</strong>
-                  <span>{repo.description ?? "No repository description"}</span>
+                  <span>{repo.description ?? t.noDescription}</span>
                 </div>
                 {repo.language && <small>{repo.language}</small>}
               </div>
             ))}
           </div>
 
-          <p className="github-preview-note">
-            Use this only if this profile is yours and you want these public signals to become part of Lumen’s context.
-          </p>
+          <p className="github-preview-note">{t.previewNote}</p>
           <div className="github-actions">
             <button className="primary-button" onClick={handleConnect} disabled={busy}>
               {busy ? <Loader2 className="spin" size={15} /> : <Github size={15} />}
-              Use this context
+              {t.useContext}
             </button>
             <button className="text-button" onClick={() => setPreview(null)} disabled={busy}>
-              Cancel
+              {t.cancel}
             </button>
           </div>
         </div>

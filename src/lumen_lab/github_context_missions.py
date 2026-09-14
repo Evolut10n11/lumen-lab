@@ -4,6 +4,7 @@ import hashlib
 import json
 from typing import Any
 
+from .localization import is_russian, normalize_locale
 from .mission_radar import Mission, load_missions
 from .profile import Profile, load_profile, normalized_label
 from .work_session import WorkSessionTemplate, load_progress, load_templates
@@ -49,13 +50,20 @@ def _github_signals(snapshot: dict[str, Any]) -> tuple[str | None, str | None]:
     return project or None, language or None
 
 
-def github_context_mission(profile: Profile, snapshot: dict[str, Any]) -> Mission | None:
+def github_context_mission(
+    profile: Profile,
+    snapshot: dict[str, Any],
+    *,
+    locale: str = "en",
+) -> Mission | None:
     """Build one low-risk mission from explicit priorities plus connected GitHub evidence."""
     priority = _primary_priority(profile)
     active_project, primary_language = _github_signals(snapshot)
     if priority is None or active_project is None:
         return None
 
+    locale = normalize_locale(locale)
+    russian = is_russian(locale)
     priority_name, priority_weight = priority
     project_name = active_project.rsplit("/", 1)[-1]
     digest_source = (
@@ -63,21 +71,41 @@ def github_context_mission(profile: Profile, snapshot: dict[str, Any]) -> Missio
         f"{normalized_label(priority_name)}"
     )
     digest = hashlib.sha256(digest_source.encode()).hexdigest()[:10]
-    language_note = f" Its primary language is {primary_language}." if primary_language else ""
 
-    mission = Mission(
-        id=f"{GITHUB_CONTEXT_MISSION_PREFIX}{digest}",
-        title=f"Use {project_name} to move {priority_name} forward",
-        why_now=(
+    if russian:
+        language_note = (
+            f" Основной язык проекта — {primary_language}." if primary_language else ""
+        )
+        title = f"Использовать {project_name}, чтобы продвинуть «{priority_name}»"
+        why_now = (
+            f"Подключённый GitHub показывает {active_project} как ваш самый активный "
+            f"публичный репозиторий, а «{priority_name}» — главный приоритет в Lumen."
+            f"{language_note}"
+        )
+        next_action = (
+            f"Выберите одно конкретное изменение в {project_name}, которое даст видимое "
+            f"подтверждение прогресса по «{priority_name}». Определите критерии готовности "
+            "и выполните самый маленький ограниченный кусок."
+        )
+    else:
+        language_note = f" Its primary language is {primary_language}." if primary_language else ""
+        title = f"Use {project_name} to move {priority_name} forward"
+        why_now = (
             f"Your connected GitHub shows {active_project} as your most active public "
             f"repository, while {priority_name} is your top Lumen priority at "
             f"{priority_weight}/10.{language_note}"
-        ),
-        next_action=(
+        )
+        next_action = (
             f"Choose one concrete change in {project_name} that creates visible evidence "
             f"for {priority_name}, define what done means, and complete the smallest "
             "bounded slice."
-        ),
+        )
+
+    mission = Mission(
+        id=f"{GITHUB_CONTEXT_MISSION_PREFIX}{digest}",
+        title=title,
+        why_now=why_now,
+        next_action=next_action,
         impact=min(10, max(7, priority_weight)),
         urgency=min(10, max(5, priority_weight - 1)),
         leverage=9,
@@ -103,21 +131,39 @@ def _github_work_session(
     project_name: str,
     priority_name: str,
     focus_minutes: int,
+    locale: str = "en",
 ) -> WorkSessionTemplate:
-    template = WorkSessionTemplate(
-        mission_id=mission.id,
-        focus_minutes=focus_minutes,
-        steps=(
+    russian = is_russian(locale)
+    if russian:
+        steps = (
+            f"Откройте {project_name} и найдите одно самое полезное незавершённое изменение.",
+            f"Одним предложением свяжите это изменение с целью «{priority_name}».",
+            "Определите ограниченный результат, который реально закончить за этот фокус-блок.",
+            "Сделайте этот результат, не расширяя задачу по ходу работы.",
+            "Зафиксируйте результат, что изменилось и какое следующее действие лучше всего.",
+        )
+        definition = (
+            f"В {project_name} появился видимый результат или изменение, подтверждающее "
+            f"прогресс по цели «{priority_name}», и записан следующий шаг."
+        )
+    else:
+        steps = (
             f"Open {project_name} and identify the single most useful unfinished change.",
             f"Write one sentence connecting that change to {priority_name}.",
             "Define a bounded deliverable that can be completed in this focus block.",
             "Implement or produce that deliverable without expanding the scope.",
             "Record the resulting artifact, what changed, and the next best action.",
-        ),
-        definition_of_done=(
+        )
+        definition = (
             f"{project_name} contains one visible artifact or change that provides evidence "
             f"of progress toward {priority_name}, with the next action recorded."
-        ),
+        )
+
+    template = WorkSessionTemplate(
+        mission_id=mission.id,
+        focus_minutes=focus_minutes,
+        steps=steps,
+        definition_of_done=definition,
     )
     template.validate()
     return template
@@ -201,9 +247,12 @@ def clear_github_context_missions(workspace: UserWorkspace) -> bool:
 def reconcile_github_context_mission(
     workspace: UserWorkspace,
     snapshot: dict[str, Any],
+    *,
+    locale: str = "en",
 ) -> Mission | None:
     """Replace stale GitHub-derived work with one current, profile-aligned mission."""
     workspace.require_initialized()
+    locale = normalize_locale(locale)
     profile = load_profile(workspace.profile_path)
     missions = load_missions(workspace.missions_path)
     templates = load_templates(workspace.work_sessions_path)
@@ -218,7 +267,7 @@ def reconcile_github_context_mission(
         if not template.mission_id.startswith(GITHUB_CONTEXT_MISSION_PREFIX)
     ]
 
-    mission = github_context_mission(profile, snapshot)
+    mission = github_context_mission(profile, snapshot, locale=locale)
     if mission is None:
         _clear_github_progress(workspace)
         _write_missions(workspace, base_missions)
@@ -240,6 +289,7 @@ def reconcile_github_context_mission(
         project_name=project_name,
         priority_name=priority[0],
         focus_minutes=focus_minutes,
+        locale=locale,
     )
 
     _write_missions(workspace, [*base_missions, mission])
