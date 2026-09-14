@@ -1,6 +1,6 @@
 # CI supply-chain policy
 
-Lumen treats GitHub Actions and build toolchains as executable dependencies. External actions in `.github/workflows/` must therefore be pinned to immutable 40-character commit SHAs rather than mutable tags or branches, and the desktop Rust compiler must be selected by the repository-owned `rust-toolchain.toml` rather than a floating `stable` channel.
+Lumen treats GitHub Actions and build toolchains as executable dependencies. External actions in `.github/workflows/` must therefore be pinned to immutable 40-character commit SHAs rather than mutable tags or branches, the desktop Rust compiler must be selected by the repository-owned `rust-toolchain.toml` rather than a floating `stable` channel, and desktop JavaScript dependencies must be installed from the committed npm lockfile.
 
 The workflow line should keep the reviewed major tag as an inline comment, for example:
 
@@ -16,9 +16,16 @@ channel = "1.98.1"
 profile = "minimal"
 ```
 
+Desktop dependency installs are lockfile-driven:
+
+```bash
+cd apps/desktop
+npm ci
+```
+
 ## Why
 
-A reference such as `actions/checkout@v4` can move after a pull request has been reviewed. Likewise, `rustup update stable` can select a different compiler on two otherwise identical CI runs. Pinning the exact action revisions and Rust version makes the build environment more stable and auditable.
+A reference such as `actions/checkout@v4` can move after a pull request has been reviewed. Likewise, `rustup update stable` can select a different compiler on two otherwise identical CI runs, and `npm install` can resolve newer package versions that still satisfy dependency ranges. Pinning the exact action revisions and Rust version, plus committing `apps/desktop/package-lock.json` and using `npm ci`, makes the build environment more stable and auditable.
 
 This is especially important for workflows with write permissions or release responsibilities. Pinning does not make an action, compiler, or dependency trustworthy by itself; it makes the selected revision explicit and reviewable.
 
@@ -40,6 +47,16 @@ This is especially important for workflows with write permissions or release res
 5. Require both Desktop CI and the Windows Installer build/smoke test to pass before merging.
 
 `tests/test_rust_toolchain_contract.py` ensures the pin remains exact and that both desktop workflows watch `rust-toolchain.toml` without reintroducing a floating stable-channel override.
+
+## Updating desktop npm dependencies
+
+1. Change dependency declarations in `apps/desktop/package.json`.
+2. Regenerate `apps/desktop/package-lock.json` with the repository's Node 22 toolchain and review the resulting lockfile diff.
+3. Keep `package.json` and `package-lock.json` in the same pull request.
+4. Use `npm ci`, not `npm install`, in Desktop CI and Windows packaging workflows. `npm ci` must fail rather than silently rewriting an out-of-sync lockfile.
+5. Require both Desktop CI and the Windows Installer build/smoke test to pass before merging dependency changes.
+
+`tests/test_npm_lockfile_contract.py` checks that the lockfile exists, matches the desktop package name/version and declared top-level dependencies, and that packaging workflows do not reintroduce `npm install`.
 
 The initial action pins were resolved from the official upstream major tags on 2026-09-14:
 

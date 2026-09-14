@@ -26,8 +26,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
       - name: Install
-        run: npm install
+        run: npm ci
       - name: Build
         run: npm run build
 
@@ -38,10 +40,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
       - name: Build frontend for Tauri context
         working-directory: apps/desktop
         run: |
-          npm install
+          npm ci
           npm run build
       - name: Install Tauri system dependencies
         run: |
