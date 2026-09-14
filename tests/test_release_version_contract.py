@@ -53,3 +53,14 @@ def test_release_workflow_publishes_curated_notes_when_present() -> None:
     assert 'release_notes=(--notes-file "$notes_file")' in workflow
     assert 'release_notes=(--generate-notes)' in workflow
     assert '"${release_notes[@]}"' in workflow
+
+
+def test_release_workflow_publishes_and_verifies_installer_checksum() -> None:
+    workflow = (ROOT / ".github/workflows/windows-installer.yml").read_text(encoding="utf-8")
+
+    assert "Generate installer SHA-256 checksum" in workflow
+    assert "Get-FileHash -Algorithm SHA256" in workflow
+    assert "apps/desktop/src-tauri/target/release/bundle/nsis/*.sha256" in workflow
+    assert "working-directory: release-assets" in workflow
+    assert "sha256sum --check *.sha256" in workflow
+    assert "release-assets/*.exe release-assets/*.sha256" in workflow
