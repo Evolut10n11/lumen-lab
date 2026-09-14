@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -97,19 +98,35 @@ class UserWorkspace:
         self.directory.mkdir(parents=True, exist_ok=True)
         return self
 
+    def _quarantine_invalid_profile(self) -> None:
+        if not self.profile_path.exists():
+            return
+        backup = self.profile_path.with_name(
+            f"profile.corrupt-{uuid.uuid4().hex[:8]}.json"
+        )
+        try:
+            os.replace(self.profile_path, backup)
+        except OSError:
+            # Recovery should never make bootstrap fail harder than the original state.
+            pass
+
     def initialized(self) -> bool:
         if not self.profile_path.is_file():
             return False
 
-        # A previous failed first-run write may have left profile.json empty or malformed.
-        # Treat that as unfinished onboarding instead of making the whole desktop app fail.
+        # v0.1.1 could truncate profile.json before a UnicodeEncodeError. Recover by
+        # preserving the bad file and returning the user to onboarding.
         try:
             from .profile import load_profile
 
             profile = load_profile(self.profile_path)
         except (OSError, UnicodeError, ValueError):
+            self._quarantine_invalid_profile()
             return False
-        return profile.id == self.user_id
+        if profile.id != self.user_id:
+            self._quarantine_invalid_profile()
+            return False
+        return True
 
     def require_initialized(self) -> None:
         if self.initialized():
