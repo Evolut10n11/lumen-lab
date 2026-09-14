@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .profile import normalized_label
+from .state_io import write_json_atomic
 
 FEEDBACK_SCHEMA_VERSION = 1
 MAX_AFFINITY = 5
@@ -88,11 +89,7 @@ def load_feedback(path: Path) -> PreferenceFeedback:
 
 
 def save_feedback(path: Path, feedback: PreferenceFeedback) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(feedback.to_dict(), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(path, feedback.to_dict())
 
 
 def _updated_score(scores: dict[str, int], key: str, delta: int) -> dict[str, int]:

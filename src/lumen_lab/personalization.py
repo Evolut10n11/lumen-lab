@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from collections.abc import Iterable
 
 from .localization import is_russian, normalize_locale
-from .mission_radar import Mission
+from .mission_radar import Mission, save_missions
 from .profile import CandidateGenerationPolicy, Profile, normalized_label
+from .state_io import write_json_atomic
 from .work_session import WorkSessionTemplate
 from .workspace import UserWorkspace
 
@@ -429,12 +429,6 @@ def initialize_workspace(
     sessions = starter_work_sessions(profile, missions, locale=locale)
     workspace.ensure()
 
-    mission_payload: list[dict[str, object]] = []
-    for mission in missions:
-        item = mission.to_dict()
-        item.pop("score")
-        mission_payload.append(item)
-
     session_payload = [
         {
             "mission_id": item.mission_id,
@@ -445,18 +439,9 @@ def initialize_workspace(
         for item in sessions
     ]
 
-    workspace.profile_path.write_text(
-        json.dumps(profile_payload(profile), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    workspace.missions_path.write_text(
-        json.dumps(mission_payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    workspace.work_sessions_path.write_text(
-        json.dumps(session_payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(workspace.profile_path, profile_payload(profile))
+    save_missions(workspace.missions_path, missions)
+    write_json_atomic(workspace.work_sessions_path, session_payload)
     if replace and workspace.work_progress_path.exists():
         workspace.work_progress_path.unlink()
     return missions, sessions

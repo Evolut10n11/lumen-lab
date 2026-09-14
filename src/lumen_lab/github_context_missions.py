@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Any
 
 from .localization import is_russian, normalize_locale
-from .mission_radar import Mission, load_missions
+from .mission_radar import Mission, load_missions, save_missions
 from .profile import Profile, load_profile, normalized_label
+from .state_io import write_json_atomic
 from .work_session import WorkSessionTemplate, load_progress, load_templates
 from .workspace import UserWorkspace
 
@@ -170,15 +170,7 @@ def _github_work_session(
 
 
 def _write_missions(workspace: UserWorkspace, missions: list[Mission]) -> None:
-    payload: list[dict[str, Any]] = []
-    for mission in missions:
-        item = mission.to_dict()
-        item.pop("score", None)
-        payload.append(item)
-    workspace.missions_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    save_missions(workspace.missions_path, missions)
 
 
 def _write_templates(workspace: UserWorkspace, templates: list[WorkSessionTemplate]) -> None:
@@ -191,10 +183,7 @@ def _write_templates(workspace: UserWorkspace, templates: list[WorkSessionTempla
         }
         for template in templates
     ]
-    workspace.work_sessions_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(workspace.work_sessions_path, payload)
 
 
 def _clear_github_progress(
@@ -215,10 +204,7 @@ def _clear_github_progress(
     }
     if filtered == progress:
         return
-    workspace.work_progress_path.write_text(
-        json.dumps(filtered, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(workspace.work_progress_path, filtered)
 
 
 def clear_github_context_missions(workspace: UserWorkspace) -> bool:

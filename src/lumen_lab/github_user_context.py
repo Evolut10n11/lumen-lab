@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .onboarding import load_onboarding_context, save_onboarding_context
+from .state_io import write_json_atomic
 
 GITHUB_CONTEXT_SCHEMA_VERSION = 1
 _GITHUB_USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
@@ -216,11 +217,7 @@ class GitHubPublicContextClient:
 
 
 def save_github_snapshot(path: Path, snapshot: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(path, snapshot)
 
 
 def load_github_snapshot(path: Path) -> dict[str, Any] | None:

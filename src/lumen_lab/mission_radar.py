@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from .feedback import PreferenceFeedback, feedback_adjustment
 from .profile import Profile, normalized_label
+from .state_io import write_json_atomic
 
 DEFAULT_MISSIONS_PATH = Path("state/missions.json")
 ALLOWED_STATUSES = {"active", "paused", "done"}
@@ -136,6 +137,43 @@ def load_missions(path: Path = DEFAULT_MISSIONS_PATH) -> list[Mission]:
         seen.add(mission.id)
         missions.append(mission)
     return missions
+
+
+def save_missions(path: Path, missions: list[Mission]) -> None:
+    payload: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for mission in missions:
+        mission.validate()
+        if mission.id in seen:
+            raise ValueError(f"duplicate mission id: {mission.id}")
+        seen.add(mission.id)
+        item = mission.to_dict()
+        item.pop("score")
+        payload.append(item)
+    write_json_atomic(path, payload)
+
+
+def set_mission_status(
+    path: Path,
+    missions: list[Mission],
+    mission_id: str,
+    status: str,
+) -> list[Mission]:
+    if status not in ALLOWED_STATUSES:
+        allowed = ", ".join(sorted(ALLOWED_STATUSES))
+        raise ValueError(f"mission status must be one of: {allowed}")
+
+    found = False
+    updated: list[Mission] = []
+    for mission in missions:
+        if mission.id == mission_id:
+            found = True
+            mission = replace(mission, status=status)
+        updated.append(mission)
+    if not found:
+        raise ValueError(f"mission not found: {mission_id}")
+    save_missions(path, updated)
+    return updated
 
 
 def profile_alignment(mission: Mission, profile: Profile) -> float:

@@ -51,3 +51,32 @@ def test_user_can_onboard_after_corrupt_profile_is_quarantined(tmp_path: Path) -
 
     assert dashboard["user"]["display_name"] == "Иван"
     assert load_profile(workspace.profile_path).display_name == "Иван"
+
+
+def test_corrupt_other_user_does_not_break_selected_user_bootstrap(tmp_path: Path) -> None:
+    app = LumenApplication(tmp_path)
+    app.onboard("alice", display_name="Alice", priorities={"career": 10})
+    broken = UserWorkspace.from_root(tmp_path, "bob").ensure()
+    broken.profile_path.write_text("{", encoding="utf-8")
+
+    result = app.bootstrap("alice")
+
+    assert result["initialized"] is True
+    assert result["dashboard"]["user"]["id"] == "alice"
+    assert result["users"] == [{"id": "alice", "display_name": "Alice"}]
+    assert not broken.profile_path.exists()
+    assert list(broken.directory.glob("profile.corrupt-*.json"))
+
+
+def test_corrupt_optional_state_is_quarantined_without_losing_profile(tmp_path: Path) -> None:
+    app = LumenApplication(tmp_path)
+    app.onboard("alice", display_name="Alice", priorities={"career": 10})
+    workspace = UserWorkspace.from_root(tmp_path, "alice")
+    workspace.work_progress_path.write_text("{", encoding="utf-8")
+
+    result = app.bootstrap("alice")
+
+    assert result["initialized"] is True
+    assert result["dashboard"]["user"]["display_name"] == "Alice"
+    assert result["dashboard"]["summary"]["completed_steps"] == 0
+    assert list(workspace.directory.glob("work_progress.corrupt-*.json"))

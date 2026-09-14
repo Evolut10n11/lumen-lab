@@ -17,7 +17,10 @@ def write_json_atomic(path: Path, payload: Any) -> None:
     data = text.encode("utf-8")
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     try:
-        temporary.write_bytes(data)
+        with temporary.open("wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, path)
     finally:
         if temporary.exists():

@@ -8,6 +8,7 @@ from typing import Any
 from .feedback import PreferenceFeedback, feedback_adjustment
 from .mission_radar import Mission, mission_score, ranked_missions
 from .profile import Profile
+from .state_io import write_json_atomic
 
 DEFAULT_TEMPLATES_PATH = Path("state/work_sessions.json")
 DEFAULT_PROGRESS_PATH = Path(".lumen/work_progress.json")
@@ -157,8 +158,7 @@ def mark_step_done(
     completed = set(progress.get(mission_id, []))
     completed.add(step_number)
     progress[mission_id] = sorted(completed)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(progress, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write_json_atomic(path, progress)
     return progress
 
 

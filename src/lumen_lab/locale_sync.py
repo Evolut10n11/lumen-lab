@@ -1,26 +1,17 @@
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 
 from .localization import normalize_locale
-from .mission_radar import Mission, load_missions
+from .mission_radar import load_missions, save_missions
 from .onboarding import load_onboarding_context, save_onboarding_context
 from .personalization import starter_missions, starter_work_sessions
 from .profile import load_profile
+from .state_io import write_json_atomic
 from .work_session import WorkSessionTemplate, load_templates
 from .workspace import UserWorkspace
 
 _PERSONAL_MISSION_PREFIX = "personal-"
-
-
-def _mission_payload(missions: list[Mission]) -> list[dict[str, object]]:
-    payload: list[dict[str, object]] = []
-    for mission in missions:
-        item = mission.to_dict()
-        item.pop("score")
-        payload.append(item)
-    return payload
 
 
 def _session_payload(templates: list[WorkSessionTemplate]) -> list[dict[str, object]]:
@@ -95,14 +86,8 @@ def synchronize_workspace_locale(workspace: UserWorkspace, locale: str) -> bool:
             localized_templates.get(template.mission_id, template) for template in templates
         ]
 
-        workspace.missions_path.write_text(
-            json.dumps(_mission_payload(updated_missions), indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        workspace.work_sessions_path.write_text(
-            json.dumps(_session_payload(updated_templates), indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        save_missions(workspace.missions_path, updated_missions)
+        write_json_atomic(workspace.work_sessions_path, _session_payload(updated_templates))
 
     context["locale"] = locale
     save_onboarding_context(workspace.onboarding_context_path, context)

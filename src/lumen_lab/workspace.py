@@ -98,17 +98,20 @@ class UserWorkspace:
         self.directory.mkdir(parents=True, exist_ok=True)
         return self
 
-    def _quarantine_invalid_profile(self) -> None:
-        if not self.profile_path.exists():
+    def _quarantine(self, path: Path) -> None:
+        if not path.exists():
             return
-        backup = self.profile_path.with_name(
-            f"profile.corrupt-{uuid.uuid4().hex[:8]}.json"
+        backup = path.with_name(
+            f"{path.stem}.corrupt-{uuid.uuid4().hex[:8]}{path.suffix}"
         )
         try:
-            os.replace(self.profile_path, backup)
+            os.replace(path, backup)
         except OSError:
             # Recovery should never make bootstrap fail harder than the original state.
             pass
+
+    def _quarantine_invalid_profile(self) -> None:
+        self._quarantine(self.profile_path)
 
     def initialized(self) -> bool:
         if not self.profile_path.is_file():
@@ -117,15 +120,40 @@ class UserWorkspace:
         # v0.1.1 could truncate profile.json before a UnicodeEncodeError. Recover by
         # preserving the bad file and returning the user to onboarding.
         try:
+            from .feedback import load_feedback
+            from .github_user_context import load_github_snapshot
+            from .mission_radar import load_missions
+            from .onboarding import load_onboarding_context
             from .profile import load_profile
+            from .work_session import load_progress, load_templates
 
             profile = load_profile(self.profile_path)
+            missions = load_missions(self.missions_path)
+            templates = load_templates(self.work_sessions_path)
         except (OSError, UnicodeError, ValueError):
             self._quarantine_invalid_profile()
             return False
         if profile.id != self.user_id:
             self._quarantine_invalid_profile()
             return False
+
+        mission_ids = {mission.id for mission in missions}
+        template_ids = {template.mission_id for template in templates}
+        if mission_ids != template_ids:
+            self._quarantine_invalid_profile()
+            return False
+
+        optional_state = (
+            (self.work_progress_path, load_progress),
+            (self.feedback_path, load_feedback),
+            (self.onboarding_context_path, load_onboarding_context),
+            (self.github_context_path, load_github_snapshot),
+        )
+        for path, loader in optional_state:
+            try:
+                loader(path)
+            except (OSError, UnicodeError, ValueError):
+                self._quarantine(path)
         return True
 
     def require_initialized(self) -> None:
