@@ -19,6 +19,10 @@ from .state_io import (
 
 _LEGACY_ENCODINGS = ("cp1251", "cp1252", "latin1")
 _MOJIBAKE_MARKERS = ("Р", "С", "Ð", "Ñ", "Ã", "Â", "â")
+_RUSSIAN_ALPHABET = frozenset(
+    "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+    "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+)
 _MAX_DECODING_DEPTH = 3
 _QUOTE_PAIRS = (("«", "»"), ("“", "”"), ('"', '"'), ("'", "'"))
 _WORKSPACE_SCAN_CACHE: dict[Path, tuple[tuple[str, int, int, int], ...]] = {}
@@ -40,9 +44,16 @@ def _is_single_cyrillic_unit(value: str, candidate: str, encoding: str) -> bool:
     cyrillic = [character for character in candidate if 0x0400 <= ord(character) <= 0x04FF]
     if len(cyrillic) != 1 or encoding != "cp1251":
         return False
-    safe_source = all(
+    source_is_cyrillic = all(
         unicodedata.name(character, "").startswith("CYRILLIC")
         for character in value
+    )
+    # A pair made only of Russian letters can itself be legitimate user text:
+    # `Рё` is both a real name spelling and mojibake for `и`. Fail closed for
+    # such ambiguous pairs, while allowing unambiguous `РЇ` -> `Я` and
+    # `РЎ` -> `С`-style units whose second character is outside the alphabet.
+    safe_source = source_is_cyrillic and any(
+        character not in _RUSSIAN_ALPHABET for character in value
     )
     # The UTF-8 continuation byte for Cyrillic `Р` maps to NBSP in cp1251.
     safe_source = safe_source or (
@@ -157,12 +168,38 @@ def _repair_quoted_units(value: str) -> str:
         def replace(match: re.Match[str]) -> str:
             content = match.group(2)
             parts = re.split(r"([ \t\r\n]+)", content)
-            candidate = "".join(
-                part
-                if part.isspace()
-                else _repair_token_fragment(part, allow_single_units=True)
-                for part in parts
-            )
+            candidate_parts: list[str] = []
+            for part in parts:
+                if part.isspace():
+                    candidate_parts.append(part)
+                    continue
+                candidate = _repair_token_fragment(
+                    part,
+                    allow_single_units=True,
+                )
+                if candidate == part:
+                    start = 0
+                    end = len(part)
+                    while start < end and unicodedata.category(
+                        part[start]
+                    ).startswith("P"):
+                        start += 1
+                    while end > start and unicodedata.category(
+                        part[end - 1]
+                    ).startswith("P"):
+                        end -= 1
+                    if start or end != len(part):
+                        core = part[start:end]
+                        repaired_core = _repair_token_fragment(
+                            core,
+                            allow_single_units=True,
+                        )
+                        if repaired_core != core:
+                            candidate = (
+                                f"{part[:start]}{repaired_core}{part[end:]}"
+                            )
+                candidate_parts.append(candidate)
+            candidate = "".join(candidate_parts)
             return f"{match.group(1)}{candidate}{match.group(3)}"
 
         repaired = pattern.sub(replace, repaired)

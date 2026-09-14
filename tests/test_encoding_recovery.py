@@ -187,6 +187,28 @@ def test_v021_backup_proof_repairs_weak_unit_inside_multiword_quotes(
     }
 
 
+def test_v021_backup_proof_repairs_punctuation_attached_weak_quoted_unit(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "profile.json"
+    prefix = "Вы обозначили «"
+    suffix = "» как приоритет"
+    backup_payload = {"title": prefix + _legacy_decode("Я, дизайнер") + suffix}
+    v021_live = {"title": prefix + _legacy_decode("Я") + ", дизайнер" + suffix}
+    assert encoding_recovery._repair_v021_json(backup_payload) == v021_live
+    profile.write_text(json.dumps(v021_live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    assert repair_workspace_json(tmp_path) == (profile,)
+    assert json.loads(profile.read_text(encoding="utf-8")) == {
+        "title": prefix + "Я, дизайнер" + suffix
+    }
+
+
 def test_v021_backup_proof_recovers_unicode_whitespace_split_artifact(
     tmp_path: Path,
 ) -> None:
@@ -355,12 +377,22 @@ def test_repair_mojibake_json_repairs_keys_and_nested_values() -> None:
 
 def test_workspace_evidence_does_not_rewrite_valid_quoted_letters() -> None:
     payload = {
-        "legitimate": ["Буква «Р»", "Выберите «С»"],
+        "legitimate": [
+            "Буква «Р»",
+            "Выберите «С»",
+            "Имя «Рё, дизайнер»",
+            "Код «РЁ,»",
+        ],
         "broken": _legacy_decode("Работаю дизайнером"),
     }
 
     assert repair_mojibake_json(payload) == {
-        "legitimate": ["Буква «Р»", "Выберите «С»"],
+        "legitimate": [
+            "Буква «Р»",
+            "Выберите «С»",
+            "Имя «Рё, дизайнер»",
+            "Код «РЁ,»",
+        ],
         "broken": "Работаю дизайнером",
     }
 
