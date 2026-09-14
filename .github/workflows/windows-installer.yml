@@ -30,6 +30,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate release tag version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $config = Get-Content apps\desktop\src-tauri\tauri.conf.json -Raw | ConvertFrom-Json
+          $expected = "v$($config.version)"
+          if ("${{ github.ref_name }}" -ne $expected) {
+            throw "Release tag ${{ github.ref_name }} does not match desktop version $($config.version); expected $expected."
+          }
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
