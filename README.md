@@ -88,7 +88,7 @@ The desktop shell, frontend build, Python bridge, Tauri host, standalone engine 
 Lumen now produces a normal Windows setup executable:
 
 ```text
-Lumen_0.1.2_x64-setup.exe
+Lumen_0.1.3_x64-setup.exe
 ```
 
 The user path is:
