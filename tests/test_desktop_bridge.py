@@ -98,6 +98,19 @@ def test_desktop_can_resume_a_deferred_mission(
     assert mission_id in {item["id"] for item in resumed["radar"]}
 
 
+def test_desktop_can_select_a_free_companion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    request("quick_onboard", display_name="Alex", goals=["Career"])
+
+    dashboard = request("select_companion", character_id="kiro")
+
+    assert dashboard["companion"]["selected"]["id"] == "kiro"
+    assert sum(item["selected"] for item in dashboard["companion"]["characters"]) == 1
+
+
 def test_desktop_bridge_rejects_unknown_action(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

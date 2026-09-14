@@ -20,6 +20,16 @@ export type MissionStep = {
   done: boolean;
 };
 
+export type CompanionCharacter = {
+  id: string;
+  name: string;
+  personality: string;
+  accent: string;
+  symbol: string;
+  access: "free";
+  selected: boolean;
+};
+
 export type ContextHypothesis = {
   key: string;
   label: string;
@@ -175,6 +185,19 @@ export type Dashboard = {
     title: string;
     why_now: string;
   }>;
+  companion: {
+    selected: CompanionCharacter;
+    characters: CompanionCharacter[];
+    total_xp: number;
+    level: number;
+    level_progress: number;
+    level_target: number;
+    level_percent: number;
+    last_reaction: {
+      kind: "greeting" | "step_completed" | "mission_completed";
+      message: string;
+    };
+  };
   personalization: {
     adapting: boolean;
     signal_count: number;
@@ -328,6 +351,10 @@ export function reviseDirection(
 
 export function resumeMission(userId: string, missionId: string): Promise<Dashboard> {
   return request<Dashboard>("resume_mission", userId, { mission_id: missionId });
+}
+
+export function selectCompanion(userId: string, characterId: string): Promise<Dashboard> {
+  return request<Dashboard>("select_companion", userId, { character_id: characterId });
 }
 
 export function previewGitHub(

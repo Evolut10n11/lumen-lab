@@ -5,6 +5,13 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from .companion import (
+    companion_payload,
+    synchronize_companion,
+)
+from .companion import (
+    select_companion as select_companion_state,
+)
 from .feedback import PreferenceFeedback, feedback_adjustment, load_feedback, record_feedback
 from .locale_sync import synchronize_workspace_locale
 from .localization import is_russian, normalize_locale
@@ -28,7 +35,7 @@ from .work_session import (
 )
 from .workspace import UserWorkspace
 
-APP_SCHEMA_VERSION = 4
+APP_SCHEMA_VERSION = 5
 
 
 def _finalize_completed_missions(
@@ -393,6 +400,12 @@ class LumenApplication:
             progress,
         )
         feedback = load_feedback(workspace.feedback_path)
+        companion = synchronize_companion(
+            workspace.companion_path,
+            missions,
+            templates,
+            progress,
+        )
         radar = radar_snapshot(missions, top=top, profile=profile, feedback=feedback)
 
         active_missions = [mission for mission in missions if mission.status == "active"]
@@ -436,6 +449,7 @@ class LumenApplication:
                 }
                 for mission in paused_missions
             ],
+            "companion": companion_payload(companion, locale=locale),
             "personalization": {
                 "adapting": feedback.events > 0,
                 "signal_count": feedback.events,
@@ -541,6 +555,18 @@ class LumenApplication:
         ]
         save_missions(workspace.missions_path, updated)
         return len(paused_ids)
+
+    def select_companion(
+        self,
+        character_id: str,
+        user_id: str | None = None,
+        *,
+        top: int = 3,
+        locale: str = "en",
+    ) -> dict[str, Any]:
+        workspace = self.workspace(user_id)
+        select_companion_state(workspace.companion_path, character_id)
+        return self.dashboard(workspace.user_id, top=top, locale=locale)
 
     def rate_mission(
         self,

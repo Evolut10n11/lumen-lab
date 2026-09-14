@@ -83,6 +83,8 @@ It currently includes:
 
 The desktop shell, frontend build, Python bridge, Tauri host, standalone engine smoke test, and Windows installer build are covered by CI.
 
+The desktop experience includes three local companion personalities. Completed steps and missions produce idempotent XP events, while character selection and progress remain isolated per user. See [`docs/companions.md`](docs/companions.md) for the event contract.
+
 ### Windows install
 
 Lumen now produces a normal Windows setup executable:
