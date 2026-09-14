@@ -40,11 +40,7 @@ def test_readme_installer_name_matches_desktop_version() -> None:
     assert f"Lumen_{version}_x64-setup.exe" in readme
 
 
-def test_tagged_release_validates_tag_against_tauri_version() -> None:
-    workflow = (ROOT / ".github" / "workflows" / "windows-installer.yml").read_text(
-        encoding="utf-8"
-    )
-
-    assert "Validate release tag version" in workflow
-    assert '$expected = "v$($config.version)"' in workflow
-    assert '"${{ github.ref_name }}" -ne $expected' in workflow
+def test_release_workflow_validates_manifests_and_tag_provenance() -> None:
+    workflow = (ROOT / ".github/workflows/windows-installer.yml").read_text(encoding="utf-8")
+    assert 'python packaging/check_release.py --ref "$env:RELEASE_REF"' in workflow
+    assert 'python3 packaging/check_release.py --ref "$GITHUB_REF" --sha "$GITHUB_SHA"' in workflow
