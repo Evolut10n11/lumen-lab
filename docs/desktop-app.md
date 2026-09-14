@@ -23,8 +23,8 @@ personalized home ─────> focus session
 
 The main product surfaces are:
 
-- **Today** — one recommended next move and lightweight steering actions;
-- **Focus** — the current bounded work session and progress;
+- **Today** — one recommended next move, an optional explanation of the evidence behind it, and lightweight steering actions;
+- **Focus** — the current bounded work session, progress, and the same recommendation explanation;
 - **Activity** — mission radar and momentum summary;
 - **Profile** — personalization state without exposing tuning controls.
 
@@ -49,6 +49,8 @@ per-user local workspace
 ```
 
 The UI does not reimplement ranking or personalization. It renders the application-service contract and sends explicit product actions back to the Python engine.
+
+Recommendation explanations follow the same boundary: Python computes `today.selection.reasons`; React only renders those reasons in a collapsed detail and suppresses the already-visible `why_now` duplicate. The frontend does not reconstruct score weights or infer new evidence.
 
 ## Local data and trust boundary
 
