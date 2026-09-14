@@ -638,7 +638,7 @@ def repair_workspace_json(directory: Path) -> tuple[Path, ...]:
                         v021_replacements[path] = (
                             live_payload,
                             repair_mojibake_json(
-                                backup_payload,
+                                live_payload,
                                 allow_single_units=True,
                             ),
                         )
