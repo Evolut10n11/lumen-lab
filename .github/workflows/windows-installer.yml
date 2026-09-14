@@ -72,10 +72,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Install desktop dependencies
         working-directory: apps/desktop
-        run: npm install
+        run: npm ci
 
       - name: Generate Windows icon set
         working-directory: apps/desktop
