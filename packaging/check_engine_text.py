@@ -34,8 +34,7 @@ def call_engine(
     env.update(PYTHONUTF8="0", PYTHONIOENCODING="cp1251", PYTHONLEGACYWINDOWSSTDIO="1")
     result = subprocess.run(
         command, input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=root, env=env,
-        timeout=60, check=False,
+        capture_output=True, cwd=root, env=env, timeout=60, check=False,
     )
     if result.returncode != 0:
         raise AssertionError(
@@ -97,7 +96,7 @@ def exercise(command: list[str], root: Path) -> None:
     for path in workspace.glob("*.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         assert "\ufffd" not in json.dumps(data, ensure_ascii=False)
-    print("PASS: UTF-8 names, Cyrillic UI, emoji, saved answers, restart, locale switch and progress")
+    print("PASS: Unicode names/UI, emoji, saved answers, restart, locale switch and progress")
 
 
 def main() -> None:
