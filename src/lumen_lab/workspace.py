@@ -125,7 +125,11 @@ class UserWorkspace:
             from .mission_radar import load_missions
             from .onboarding import load_onboarding_context
             from .profile import load_profile
-            from .work_session import load_progress, load_templates
+            from .work_session import (
+                load_progress,
+                load_templates,
+                validate_progress_for_template,
+            )
 
             profile = load_profile(self.profile_path)
             missions = load_missions(self.missions_path)
@@ -143,8 +147,17 @@ class UserWorkspace:
             self._quarantine_invalid_profile()
             return False
 
+        templates_by_mission = {template.mission_id: template for template in templates}
+        try:
+            progress = load_progress(self.work_progress_path)
+            for mission_id, completed in progress.items():
+                template = templates_by_mission.get(mission_id)
+                if template is not None:
+                    validate_progress_for_template(completed, template)
+        except (OSError, UnicodeError, ValueError):
+            self._quarantine(self.work_progress_path)
+
         optional_state = (
-            (self.work_progress_path, load_progress),
             (self.feedback_path, load_feedback),
             (self.onboarding_context_path, load_onboarding_context),
             (self.github_context_path, load_github_snapshot),

@@ -43,7 +43,7 @@ def _finalize_completed_missions(
         for mission in missions
         if mission.status == "active"
         and step_counts.get(mission.id, 0) > 0
-        and len(progress.get(mission.id, [])) == step_counts[mission.id]
+        and progress.get(mission.id, []) == list(range(1, step_counts[mission.id] + 1))
     }
     if not completed_ids:
         return missions
@@ -409,11 +409,16 @@ class LumenApplication:
                 locale=locale,
             )
 
+        active_ids = {mission.id for mission in active_missions}
         completed_steps = sum(len(items) for items in progress.values())
-        total_steps = 0
+        completed_active_steps = sum(
+            len(items) for mission_id, items in progress.items() if mission_id in active_ids
+        )
+        total_steps = sum(len(template.steps) for template in templates)
+        total_active_steps = 0
         for template in templates:
-            if any(mission.id == template.mission_id for mission in active_missions):
-                total_steps += len(template.steps)
+            if template.mission_id in active_ids:
+                total_active_steps += len(template.steps)
 
         return {
             "schema_version": APP_SCHEMA_VERSION,
@@ -428,8 +433,13 @@ class LumenApplication:
             },
             "summary": {
                 "active_missions": len(active_missions),
+                "completed_missions": sum(
+                    mission.status == "done" for mission in missions
+                ),
                 "completed_steps": completed_steps,
-                "total_active_steps": total_steps,
+                "total_steps": total_steps,
+                "completed_active_steps": completed_active_steps,
+                "total_active_steps": total_active_steps,
             },
         }
 

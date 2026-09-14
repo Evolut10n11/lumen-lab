@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from lumen_lab.app_service import LumenApplication
@@ -79,4 +80,26 @@ def test_corrupt_optional_state_is_quarantined_without_losing_profile(tmp_path: 
     assert result["initialized"] is True
     assert result["dashboard"]["user"]["display_name"] == "Alice"
     assert result["dashboard"]["summary"]["completed_steps"] == 0
+    assert list(workspace.directory.glob("work_progress.corrupt-*.json"))
+
+
+def test_out_of_range_progress_is_quarantined_before_mission_finalization(
+    tmp_path: Path,
+) -> None:
+    app = LumenApplication(tmp_path)
+    dashboard = app.onboard("alice", display_name="Alice", priorities={"career": 10})
+    workspace = UserWorkspace.from_root(tmp_path, "alice")
+    mission_id = dashboard["today"]["mission_id"]
+    total = dashboard["today"]["progress"]["total"]
+    invalid = list(range(1, total)) + [99]
+    workspace.work_progress_path.write_text(
+        json.dumps({mission_id: invalid}),
+        encoding="utf-8",
+    )
+
+    recovered = app.bootstrap("alice")
+
+    assert recovered["dashboard"]["today"]["mission_id"] == mission_id
+    assert recovered["dashboard"]["today"]["progress"]["completed"] == 0
+    assert recovered["dashboard"]["summary"]["completed_missions"] == 0
     assert list(workspace.directory.glob("work_progress.corrupt-*.json"))

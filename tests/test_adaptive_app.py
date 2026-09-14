@@ -77,6 +77,10 @@ def test_finishing_a_session_teaches_lumen_without_an_extra_rating(tmp_path: Pat
     adapted = app.dashboard("alice")
     assert adapted["personalization"] == {"adapting": True, "signal_count": 1}
     assert adapted["summary"]["active_missions"] == active_before - 1
+    assert adapted["summary"]["completed_missions"] == 1
+    assert adapted["summary"]["completed_steps"] == step_count
+    assert adapted["summary"]["total_steps"] >= step_count
+    assert adapted["summary"]["completed_active_steps"] == 0
     assert adapted["today"]["mission_id"] != mission_id
     workspace = UserWorkspace.from_root(tmp_path, "alice")
     completed = next(
