@@ -10,6 +10,9 @@ DESKTOP = ROOT / "apps" / "desktop"
 
 def desktop_versions() -> dict[str, str]:
     package = json.loads((DESKTOP / "package.json").read_text(encoding="utf-8"))
+    package_lock = json.loads(
+        (DESKTOP / "package-lock.json").read_text(encoding="utf-8")
+    )
     tauri = json.loads(
         (DESKTOP / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
     )
@@ -18,6 +21,8 @@ def desktop_versions() -> dict[str, str]:
 
     return {
         "package.json": package["version"],
+        "package-lock.json": package_lock["version"],
+        "package-lock.json root package": package_lock["packages"][""]["version"],
         "tauri.conf.json": tauri["version"],
         "Cargo.toml": cargo["package"]["version"],
     }
