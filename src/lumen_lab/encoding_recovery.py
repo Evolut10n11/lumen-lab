@@ -254,6 +254,32 @@ def _repair_boundary_punctuation(value: str) -> str:
     return f"{value[:start]}{repaired_core}{value[end:]}"
 
 
+def _repair_weak_units(value: str) -> str:
+    """Repair evidence-gated safe single cp1251 units inside a larger token."""
+
+    output: list[str] = []
+    index = 0
+    while index < len(value):
+        replacement: tuple[int, str] | None = None
+        if value[index] in _MOJIBAKE_MARKERS:
+            for encoding in _LEGACY_ENCODINGS:
+                unit = _decode_unit(value, index, encoding)
+                if unit is None:
+                    continue
+                end, candidate = unit
+                fragment = value[index:end]
+                if _is_single_cyrillic_unit(fragment, candidate, encoding):
+                    replacement = (end, candidate)
+                    break
+        if replacement is None:
+            output.append(value[index])
+            index += 1
+        else:
+            index, candidate = replacement
+            output.append(candidate)
+    return "".join(output)
+
+
 def _repair_token_fragment(value: str, *, allow_single_units: bool) -> str:
     repaired = _repair_whole_text(value, allow_single_units=allow_single_units)
     if repaired != value:
@@ -263,6 +289,7 @@ def _repair_token_fragment(value: str, *, allow_single_units: bool) -> str:
         if repaired != value:
             return repaired
         repaired = _repair_quoted_units(value)
+        repaired = _repair_weak_units(repaired)
     return _repair_strong_runs(repaired)
 
 
