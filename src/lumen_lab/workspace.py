@@ -98,7 +98,18 @@ class UserWorkspace:
         return self
 
     def initialized(self) -> bool:
-        return self.profile_path.is_file()
+        if not self.profile_path.is_file():
+            return False
+
+        # A previous failed first-run write may have left profile.json empty or malformed.
+        # Treat that as unfinished onboarding instead of making the whole desktop app fail.
+        try:
+            from .profile import load_profile
+
+            profile = load_profile(self.profile_path)
+        except (OSError, UnicodeError, ValueError):
+            return False
+        return profile.id == self.user_id
 
     def require_initialized(self) -> None:
         if self.initialized():
