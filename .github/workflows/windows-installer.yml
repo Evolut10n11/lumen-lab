@@ -7,6 +7,7 @@ on:
       - "src/lumen_lab/**"
       - "packaging/**"
       - "pyproject.toml"
+      - "rust-toolchain.toml"
       - ".github/workflows/windows-installer.yml"
   push:
     branches:
@@ -18,6 +19,7 @@ on:
       - "src/lumen_lab/**"
       - "packaging/**"
       - "pyproject.toml"
+      - "rust-toolchain.toml"
       - ".github/workflows/windows-installer.yml"
   workflow_dispatch:
 
@@ -74,12 +76,6 @@ jobs:
       - name: Install desktop dependencies
         working-directory: apps/desktop
         run: npm install
-
-      - name: Use stable Rust
-        shell: pwsh
-        run: |
-          rustup update stable
-          rustup default stable
 
       - name: Generate Windows icon set
         working-directory: apps/desktop
