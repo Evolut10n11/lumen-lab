@@ -60,9 +60,16 @@ def test_v021_backup_proof_repairs_unquoted_punctuation_remnant(
     tmp_path: Path,
 ) -> None:
     profile = tmp_path / "profile.json"
-    backup_payload = {"title": _legacy_decode("Я, дизайнер")}
+    broken_ya = _legacy_decode("Я")
+    backup_payload = {
+        "goal": f"{broken_ya},",
+        "context": _legacy_decode("Работаю дизайнером"),
+    }
     v021_live = encoding_recovery._repair_v021_json(backup_payload)
-    assert v021_live == {"title": f"{_legacy_decode('Я')}, дизайнер"}
+    assert v021_live == {
+        "goal": f"{broken_ya},",
+        "context": "Работаю дизайнером",
+    }
 
     profile.write_text(json.dumps(v021_live, ensure_ascii=False), encoding="utf-8")
     backup = profile.with_name(f"{profile.name}.before-encoding-repair")
@@ -73,7 +80,8 @@ def test_v021_backup_proof_repairs_unquoted_punctuation_remnant(
 
     assert repair_workspace_json(tmp_path) == (profile,)
     assert json.loads(profile.read_text(encoding="utf-8")) == {
-        "title": "Я, дизайнер"
+        "goal": "Я,",
+        "context": "Работаю дизайнером",
     }
     assert json.loads(backup.read_text(encoding="utf-8")) == backup_payload
 
