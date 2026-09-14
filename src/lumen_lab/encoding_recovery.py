@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from collections import Counter
 from pathlib import Path
@@ -17,37 +18,66 @@ def _mojibake_score(value: str) -> int:
     return sum(value.count(marker) for marker in _MOJIBAKE_MARKERS)
 
 
-def repair_mojibake_text(value: str) -> str:
-    """Reverse a high-confidence legacy-codepage decoding of UTF-8 text.
+def _repair_whole_text(value: str) -> str:
+    before_score = _mojibake_score(value)
+    if before_score < 2:
+        return value
 
-    Older Windows desktop builds could decode UTF-8 pipe bytes with the active
-    code page before persisting them.  The round trip below is lossless, and the
-    marker guard prevents ordinary Russian or Western text from being rewritten.
-    Multiple passes cover state that was accidentally decoded more than once.
+    best = value
+    best_score = before_score
+    for encoding in _LEGACY_ENCODINGS:
+        try:
+            candidate = value.encode(encoding).decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            continue
+        candidate_score = _mojibake_score(candidate)
+        if candidate != value and candidate_score <= before_score - 2:
+            if candidate_score < best_score:
+                best = candidate
+                best_score = candidate_score
+    return best
+
+
+def _repair_token_fragment(value: str) -> str:
+    repaired = _repair_whole_text(value)
+    if repaired != value:
+        return repaired
+
+    for start, character in enumerate(value):
+        if character not in _MOJIBAKE_MARKERS:
+            continue
+        for end in range(len(value), start + 1, -1):
+            fragment = value[start:end]
+            repaired_fragment = _repair_whole_text(fragment)
+            if repaired_fragment != fragment:
+                # Earliest marker and longest valid span preserve surrounding
+                # localized punctuation without exploring every shorter match.
+                return f"{value[:start]}{repaired_fragment}{value[end:]}"
+    return value
+
+
+def repair_mojibake_text(value: str) -> str:
+    """Reverse high-confidence mojibake in complete or localized mixed strings.
+
+    Older Windows desktop builds could decode user-entered UTF-8 with the active
+    code page before inserting that text into valid localized templates. The
+    round trip is lossless, and the marker guard prevents ordinary Russian or
+    Western text from being rewritten. Multiple passes cover repeated decoding.
     """
 
     repaired = value
     for _ in range(_MAX_REPAIR_PASSES):
-        before_score = _mojibake_score(repaired)
-        if before_score < 2:
+        whole = _repair_whole_text(repaired)
+        if whole != repaired:
+            repaired = whole
+            continue
+        parts = re.split(r"(\s+)", repaired)
+        segmented = "".join(
+            part if part.isspace() else _repair_token_fragment(part) for part in parts
+        )
+        if segmented == repaired:
             break
-
-        best = repaired
-        best_score = before_score
-        for encoding in _LEGACY_ENCODINGS:
-            try:
-                candidate = repaired.encode(encoding).decode("utf-8")
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                continue
-            candidate_score = _mojibake_score(candidate)
-            if candidate != repaired and candidate_score <= before_score - 2:
-                if candidate_score < best_score:
-                    best = candidate
-                    best_score = candidate_score
-
-        if best == repaired:
-            break
-        repaired = best
+        repaired = segmented
     return repaired
 
 
