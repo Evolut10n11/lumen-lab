@@ -176,7 +176,10 @@ export type Dashboard = {
   };
   summary: {
     active_missions: number;
+    completed_missions: number;
     completed_steps: number;
+    total_steps: number;
+    completed_active_steps: number;
     total_active_steps: number;
   };
 };

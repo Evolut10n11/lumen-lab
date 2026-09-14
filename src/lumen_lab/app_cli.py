@@ -40,7 +40,9 @@ def _render_human(payload: dict[str, object]) -> None:
     print(f"Lumen — {user['display_name']}")
     print(
         f"Active missions: {summary['active_missions']} | "
-        f"Progress: {summary['completed_steps']}/{summary['total_active_steps']} steps"
+        "Active progress: "
+        f"{summary['completed_active_steps']}/{summary['total_active_steps']} steps | "
+        f"All-time steps: {summary['completed_steps']}"
     )
     if isinstance(today, dict):
         print("")

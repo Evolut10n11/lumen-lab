@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .ledger import Outcome
 from .models import Experiment
+from .state_io import write_json_atomic
 
 
 @dataclass(slots=True)
@@ -49,10 +50,7 @@ class LabStore:
     def save(self, experiments: list[Experiment]) -> None:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         payload = [item.to_dict() for item in experiments]
-        self.backlog_path.write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        write_json_atomic(self.backlog_path, payload)
 
     def load_outcomes(self) -> list[Outcome]:
         self.ensure()
@@ -64,10 +62,7 @@ class LabStore:
     def save_outcomes(self, outcomes: list[Outcome]) -> None:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         payload = [item.to_dict() for item in outcomes]
-        self.outcomes_path.write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        write_json_atomic(self.outcomes_path, payload)
 
     def record_outcome(self, outcome: Outcome) -> None:
         outcome.validate()

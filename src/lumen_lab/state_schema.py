@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .state_io import write_json_atomic
+
 MANIFEST_VERSION = 1
 MANIFEST_NAME = "schema_versions.json"
 MANAGED_FILES: dict[str, int] = {
@@ -128,8 +130,5 @@ def migrate_legacy_manifest(root: Path) -> SchemaManifest:
         )
 
     manifest = current_manifest()
-    path.write_text(
-        json.dumps(manifest.to_dict(), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(path, manifest.to_dict())
     return manifest

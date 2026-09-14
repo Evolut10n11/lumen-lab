@@ -7,6 +7,7 @@ from typing import Any
 
 from .localization import is_russian, normalize_locale
 from .profile import normalized_label
+from .state_io import write_json_atomic
 
 ONBOARDING_CONTEXT_VERSION = 1
 ALLOWED_FOCUS_MINUTES = (15, 30, 60)
@@ -320,11 +321,7 @@ def onboarding_context_payload(
 
 
 def save_onboarding_context(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(path, payload)
 
 
 def load_onboarding_context(path: Path) -> dict[str, Any] | None:
@@ -346,7 +343,4 @@ def apply_focus_minutes(path: Path, focus_minutes: int) -> None:
         if not isinstance(item, dict):
             raise ValueError("work session entries must be JSON objects")
         item["focus_minutes"] = focus_minutes
-    path.write_text(
-        json.dumps(raw, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(path, raw)

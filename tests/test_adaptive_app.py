@@ -4,6 +4,7 @@ from pathlib import Path
 
 from lumen_lab.app_service import LumenApplication
 from lumen_lab.feedback import load_feedback
+from lumen_lab.mission_radar import load_missions
 from lumen_lab.workspace import UserWorkspace
 
 
@@ -68,12 +69,24 @@ def test_finishing_a_session_teaches_lumen_without_an_extra_rating(tmp_path: Pat
     dashboard = app.dashboard("alice")
     mission_id = dashboard["today"]["mission_id"]
     step_count = dashboard["today"]["progress"]["total"]
+    active_before = dashboard["summary"]["active_missions"]
 
     for step_number in range(1, step_count + 1):
         app.complete_step(step_number, "alice", mission_id=mission_id)
 
     adapted = app.dashboard("alice")
     assert adapted["personalization"] == {"adapting": True, "signal_count": 1}
+    assert adapted["summary"]["active_missions"] == active_before - 1
+    assert adapted["summary"]["completed_missions"] == 1
+    assert adapted["summary"]["completed_steps"] == step_count
+    assert adapted["summary"]["total_steps"] >= step_count
+    assert adapted["summary"]["completed_active_steps"] == 0
+    assert adapted["today"]["mission_id"] != mission_id
+    workspace = UserWorkspace.from_root(tmp_path, "alice")
+    completed = next(
+        item for item in load_missions(workspace.missions_path) if item.id == mission_id
+    )
+    assert completed.status == "done"
 
     app.complete_step(step_count, "alice", mission_id=mission_id)
     repeated = app.dashboard("alice")

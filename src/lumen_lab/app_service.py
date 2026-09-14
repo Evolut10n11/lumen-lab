@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from .feedback import PreferenceFeedback, feedback_adjustment, load_feedback, record_feedback
 from .locale_sync import synchronize_workspace_locale
 from .localization import is_russian, normalize_locale
-from .mission_radar import Mission, load_missions, radar_snapshot
+from .mission_radar import (
+    Mission,
+    load_missions,
+    radar_snapshot,
+    save_missions,
+    set_mission_status,
+)
 from .personalization import build_profile, initialize_workspace, profile_payload
 from .profile import Profile, load_profile, normalized_label
 from .work_session import (
+    WorkSessionTemplate,
     choose_mission,
     load_progress,
     load_templates,
@@ -22,6 +29,30 @@ from .work_session import (
 from .workspace import UserWorkspace
 
 APP_SCHEMA_VERSION = 3
+
+
+def _finalize_completed_missions(
+    workspace: UserWorkspace,
+    missions: list[Mission],
+    templates: list[WorkSessionTemplate],
+    progress: dict[str, list[int]],
+) -> list[Mission]:
+    step_counts = {template.mission_id: len(template.steps) for template in templates}
+    completed_ids = {
+        mission.id
+        for mission in missions
+        if mission.status == "active"
+        and step_counts.get(mission.id, 0) > 0
+        and progress.get(mission.id, []) == list(range(1, step_counts[mission.id] + 1))
+    }
+    if not completed_ids:
+        return missions
+    updated = [
+        replace(mission, status="done") if mission.id in completed_ids else mission
+        for mission in missions
+    ]
+    save_missions(workspace.missions_path, updated)
+    return updated
 
 
 def _matched_priorities(mission: Mission, profile: Profile) -> list[dict[str, Any]]:
@@ -298,10 +329,18 @@ class LumenApplication:
 
         users: list[dict[str, str]] = []
         for directory in sorted(users_root.iterdir(), key=lambda item: item.name.casefold()):
-            profile_path = directory / "profile.json"
-            if not directory.is_dir() or not profile_path.is_file():
+            if not directory.is_dir():
                 continue
-            profile = load_profile(profile_path)
+            try:
+                workspace = UserWorkspace.from_root(self.root, directory.name)
+            except ValueError:
+                continue
+            if not workspace.initialized():
+                continue
+            try:
+                profile = load_profile(workspace.profile_path)
+            except (OSError, UnicodeError, ValueError):
+                continue
             users.append({"id": profile.id, "display_name": profile.display_name})
         return users
 
@@ -345,11 +384,16 @@ class LumenApplication:
         workspace = self.workspace(user_id)
         synchronize_workspace_locale(workspace, locale)
         profile = load_profile(workspace.profile_path)
-        missions = load_missions(workspace.missions_path)
-        feedback = load_feedback(workspace.feedback_path)
-        radar = radar_snapshot(missions, top=top, profile=profile, feedback=feedback)
         templates = load_templates(workspace.work_sessions_path)
         progress = load_progress(workspace.work_progress_path)
+        missions = _finalize_completed_missions(
+            workspace,
+            load_missions(workspace.missions_path),
+            templates,
+            progress,
+        )
+        feedback = load_feedback(workspace.feedback_path)
+        radar = radar_snapshot(missions, top=top, profile=profile, feedback=feedback)
 
         active_missions = [mission for mission in missions if mission.status == "active"]
         today: dict[str, Any] | None = None
@@ -365,11 +409,16 @@ class LumenApplication:
                 locale=locale,
             )
 
+        active_ids = {mission.id for mission in active_missions}
         completed_steps = sum(len(items) for items in progress.values())
-        total_steps = 0
+        completed_active_steps = sum(
+            len(items) for mission_id, items in progress.items() if mission_id in active_ids
+        )
+        total_steps = sum(len(template.steps) for template in templates)
+        total_active_steps = 0
         for template in templates:
-            if any(mission.id == template.mission_id for mission in active_missions):
-                total_steps += len(template.steps)
+            if template.mission_id in active_ids:
+                total_active_steps += len(template.steps)
 
         return {
             "schema_version": APP_SCHEMA_VERSION,
@@ -384,8 +433,13 @@ class LumenApplication:
             },
             "summary": {
                 "active_missions": len(active_missions),
+                "completed_missions": sum(
+                    mission.status == "done" for mission in missions
+                ),
                 "completed_steps": completed_steps,
-                "total_active_steps": total_steps,
+                "total_steps": total_steps,
+                "completed_active_steps": completed_active_steps,
+                "total_active_steps": total_active_steps,
             },
         }
 
@@ -467,12 +521,19 @@ class LumenApplication:
         missions = load_missions(workspace.missions_path)
         feedback = load_feedback(workspace.feedback_path)
         templates = load_templates(workspace.work_sessions_path)
-        mission = choose_mission(
-            missions,
-            mission_id=mission_id,
-            profile=profile,
-            feedback=feedback,
-        )
+        if mission_id is None:
+            mission = choose_mission(missions, profile=profile, feedback=feedback)
+        else:
+            mission = next(
+                (
+                    item
+                    for item in missions
+                    if item.id == mission_id and item.status in {"active", "done"}
+                ),
+                None,
+            )
+            if mission is None:
+                raise ValueError(f"active or completed mission not found: {mission_id}")
         template = template_for(templates, mission.id)
         before = load_progress(workspace.work_progress_path)
         was_complete = len(before.get(mission.id, [])) == len(template.steps)
@@ -490,6 +551,14 @@ class LumenApplication:
                 tags=mission.tags,
                 sentiment="like",
             )
+        if is_complete and mission.status != "done":
+            missions = set_mission_status(
+                workspace.missions_path,
+                missions,
+                mission.id,
+                "done",
+            )
+            mission = replace(mission, status="done")
         snapshot = session_snapshot(mission, template, progress, profile, feedback)
         snapshot["selection"] = _selection_explanation(
             mission,
