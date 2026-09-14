@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
+import uuid
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -20,7 +22,7 @@ def _mojibake_score(value: str) -> int:
 
 def _repair_whole_text(value: str) -> str:
     before_score = _mojibake_score(value)
-    if before_score < 2:
+    if before_score < 1:
         return value
 
     best = value
@@ -31,7 +33,14 @@ def _repair_whole_text(value: str) -> str:
         except (UnicodeEncodeError, UnicodeDecodeError):
             continue
         candidate_score = _mojibake_score(candidate)
-        if candidate != value and candidate_score <= before_score - 2:
+        marker_reduction = before_score - candidate_score
+        strong_single_unit = (
+            marker_reduction == 1
+            and len(candidate) < len(value)
+            and any(ord(character) > 127 for character in candidate)
+            and candidate.encode("utf-8").decode(encoding) == value
+        )
+        if candidate != value and (marker_reduction >= 2 or strong_single_unit):
             if candidate_score < best_score:
                 best = candidate
                 best_score = candidate_score
@@ -105,6 +114,18 @@ def repair_mojibake_json(value: Any) -> Any:
     return value
 
 
+def _backup_original(path: Path, backup: Path) -> None:
+    if backup.exists():
+        return
+    temporary = backup.with_name(f".{backup.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        shutil.copy2(path, temporary)
+        os.replace(temporary, backup)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def repair_json_file(path: Path) -> bool:
     """Repair one valid JSON file atomically and retain its original bytes once."""
 
@@ -119,8 +140,7 @@ def repair_json_file(path: Path) -> bool:
 
     backup = path.with_name(f"{path.name}.before-encoding-repair")
     try:
-        if not backup.exists():
-            shutil.copy2(path, backup)
+        _backup_original(path, backup)
         write_json_atomic(path, repaired)
     except (OSError, UnicodeError):
         # A read-only or otherwise inaccessible profile should remain loadable;

@@ -6,9 +6,14 @@ from typing import Any
 
 import pytest
 
+from lumen_lab import encoding_recovery
 from lumen_lab.app_service import LumenApplication
 from lumen_lab.desktop_bridge import dispatch
-from lumen_lab.encoding_recovery import repair_mojibake_json, repair_mojibake_text
+from lumen_lab.encoding_recovery import (
+    repair_json_file,
+    repair_mojibake_json,
+    repair_mojibake_text,
+)
 from lumen_lab.onboarding import load_onboarding_context
 from lumen_lab.workspace import UserWorkspace
 
@@ -75,6 +80,10 @@ def test_repair_mojibake_text_repairs_user_text_inside_russian_template() -> Non
     assert repair_mojibake_text(f"Вы обозначили «{broken_goal}» как приоритет") == (
         f"Вы обозначили «{goal}» как приоритет"
     )
+    short_goal = _legacy_decode("Я дизайнер")
+    assert repair_mojibake_text(f"Продвинуться в цели: {short_goal}") == (
+        "Продвинуться в цели: Я дизайнер"
+    )
 
 
 def test_repair_mojibake_text_supports_windows_1252() -> None:
@@ -104,6 +113,31 @@ def test_repair_mojibake_json_never_drops_colliding_key_values(
 
     assert repaired == dict(pairs)
     assert len(repaired) == 2
+
+
+def test_failed_backup_copy_cannot_leave_a_partial_final_backup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "profile.json"
+    original = json.dumps({"goal": _legacy_decode("Завершить макет")}, ensure_ascii=False)
+    path.write_text(original, encoding="utf-8")
+    backup = path.with_name(f"{path.name}.before-encoding-repair")
+    real_copy = encoding_recovery.shutil.copy2
+
+    def interrupted_copy(_source: Path, target: Path) -> None:
+        target.write_bytes(b"partial")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(encoding_recovery.shutil, "copy2", interrupted_copy)
+    assert repair_json_file(path) is False
+    assert path.read_text(encoding="utf-8") == original
+    assert not backup.exists()
+    assert not list(tmp_path.glob(".*.tmp"))
+
+    monkeypatch.setattr(encoding_recovery.shutil, "copy2", real_copy)
+    assert repair_json_file(path) is True
+    assert backup.read_text(encoding="utf-8") == original
 
 
 def test_bootstrap_repairs_legacy_windows_state_without_reonboarding(

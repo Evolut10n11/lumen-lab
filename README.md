@@ -90,7 +90,7 @@ The desktop experience includes three local companion personalities. Completed s
 Lumen now produces a normal Windows setup executable:
 
 ```text
-Lumen_0.2.1_x64-setup.exe
+Lumen_0.2.2_x64-setup.exe
 ```
 
 The user path is:
