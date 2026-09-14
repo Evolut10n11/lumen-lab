@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import tempfile
+from math import isfinite
 from pathlib import Path
 from statistics import median
 from time import perf_counter
@@ -20,6 +21,39 @@ CONTEXT = "Учусь и делаю проект. 東京 café 🚀"
 CHANGE = "Хочу завершить макет 🚀"
 GOAL = "Завершить макет 🚀"
 FRICTION = "Мало времени — только полчаса"
+
+
+def positive_milliseconds(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("timing budgets must be finite and greater than zero")
+    return parsed
+
+
+def summarize_timings(timings: list[tuple[str, float]]) -> tuple[float, float]:
+    samples = [elapsed for _, elapsed in timings]
+    if not samples:
+        raise ValueError("at least one timing sample is required")
+    return median(samples), max(samples)
+
+
+def assert_timing_budget(
+    timings: list[tuple[str, float]],
+    max_median_ms: float | None = None,
+    max_sample_ms: float | None = None,
+) -> tuple[float, float]:
+    median_ms, max_ms = summarize_timings(timings)
+    if max_median_ms is not None and median_ms > max_median_ms:
+        raise AssertionError(
+            "Fresh engine process median exceeded the CI budget: "
+            f"{median_ms:.0f} ms > {max_median_ms:.0f} ms"
+        )
+    if max_sample_ms is not None and max_ms > max_sample_ms:
+        raise AssertionError(
+            "Fresh engine process sample exceeded the CI budget: "
+            f"{max_ms:.0f} ms > {max_sample_ms:.0f} ms"
+        )
+    return median_ms, max_ms
 
 
 def call_engine(
@@ -77,7 +111,12 @@ def check_dashboard(data: dict[str, Any], locale: str) -> None:
         assert data["experience"]["headline"] == f"One useful thing, {NAME}."
 
 
-def exercise(command: list[str], root: Path) -> None:
+def exercise(
+    command: list[str],
+    root: Path,
+    max_median_ms: float | None = None,
+    max_sample_ms: float | None = None,
+) -> None:
     root.mkdir(parents=True)
     timings: list[tuple[str, float]] = []
     first = call_engine(command, root, "bootstrap", timings=timings)
@@ -110,10 +149,10 @@ def exercise(command: list[str], root: Path) -> None:
     for path in workspace.glob("*.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         assert "\ufffd" not in json.dumps(data, ensure_ascii=False)
-    samples = [elapsed for _, elapsed in timings]
+    median_ms, max_ms = assert_timing_budget(timings, max_median_ms, max_sample_ms)
     print(
         "TIMING: fresh engine process "
-        f"median={median(samples):.0f} ms max={max(samples):.0f} ms samples={len(samples)}"
+        f"median={median_ms:.0f} ms max={max_ms:.0f} ms samples={len(timings)}"
     )
     print("PASS: Unicode names/UI, emoji, saved answers, restart, locale switch and progress")
 
@@ -121,10 +160,25 @@ def exercise(command: list[str], root: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", type=Path, required=True)
+    parser.add_argument(
+        "--max-median-ms",
+        type=positive_milliseconds,
+        help="Optional maximum median fresh-process latency in milliseconds.",
+    )
+    parser.add_argument(
+        "--max-sample-ms",
+        type=positive_milliseconds,
+        help="Optional maximum single fresh-process latency in milliseconds.",
+    )
     args = parser.parse_args()
     engine = args.engine.resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix="lumen-text-contract-") as temporary:
-        exercise([str(engine)], Path(temporary) / "Данные приложения")
+        exercise(
+            [str(engine)],
+            Path(temporary) / "Данные приложения",
+            max_median_ms=args.max_median_ms,
+            max_sample_ms=args.max_sample_ms,
+        )
 
 
 if __name__ == "__main__":

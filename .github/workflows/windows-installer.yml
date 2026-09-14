@@ -60,8 +60,8 @@ jobs:
           if (-not $payload.ok) { throw "Packaged engine returned an error." }
           if ($payload.data.initialized -ne $false) { throw "Unexpected packaged bootstrap state." }
 
-      - name: Verify standalone engine Unicode roundtrip
-        run: python packaging/check_engine_text.py --engine dist/lumen-engine.exe
+      - name: Verify standalone engine Unicode and startup budget
+        run: python packaging/check_engine_text.py --engine dist/lumen-engine.exe --max-median-ms 2500 --max-sample-ms 5000
 
       - name: Stage engine for Tauri bundle
         shell: pwsh
@@ -115,8 +115,8 @@ jobs:
             Pop-Location
           }
 
-          python packaging/check_engine_text.py --engine $engine.FullName
-          if ($LASTEXITCODE -ne 0) { throw "Installed engine corrupted Unicode or saved progress." }
+          python packaging/check_engine_text.py --engine $engine.FullName --max-median-ms 2500 --max-sample-ms 5000
+          if ($LASTEXITCODE -ne 0) { throw "Installed engine corrupted Unicode, saved progress, or exceeded the startup budget." }
 
           $desktop = Get-ChildItem -Path $installDir -Filter lumen-desktop.exe -Recurse |
             Where-Object { $_.Name -ne 'lumen-engine.exe' } |
