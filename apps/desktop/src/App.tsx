@@ -28,11 +28,13 @@ import {
   reactToMission,
   resumeMission,
   reviseDirection,
+  selectCompanion,
   setRequestLocale,
 } from "./lib/lumen";
 
 type Screen = "home" | "mission" | "activity" | "profile";
 type OnboardingStep = "name" | "context" | "change" | "friction" | "focus" | "review";
+type CompanionStyle = React.CSSProperties & { "--companion-accent": string };
 
 const onboardingSteps: OnboardingStep[] = [
   "name",
@@ -306,6 +308,26 @@ function Sidebar({ screen, setScreen, dashboard, locale }: {
   );
 }
 
+function CompanionPortrait({ character, compact = false }: {
+  character: Dashboard["companion"]["selected"];
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={compact ? "companion-portrait compact" : "companion-portrait"}
+      data-character={character.id}
+      style={{ "--companion-accent": character.accent } as CompanionStyle}
+      aria-hidden="true"
+    >
+      <div className="companion-face">
+        <span className="companion-symbol">{character.symbol}</span>
+        <span className="companion-eyes"><i /><i /></span>
+        <span className="companion-smile" />
+      </div>
+    </div>
+  );
+}
+
 function HomeScreen({ dashboard, setScreen, onReact, onClarify, locale }: {
   dashboard: Dashboard;
   setScreen: (screen: Screen) => void;
@@ -367,14 +389,37 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify, locale }: {
           </div>
         </article>
 
-        <aside className="learning-card">
-          <Sparkles size={20} />
-          <div>
-            <span className="card-kicker">{t.personalization}</span>
-            <h3>{dashboard.context ? t.learningPattern : dashboard.experience.learning.active ? t.adapting : t.noTuning}</h3>
-            <p>{dashboard.context ? t.hypotheses : dashboard.experience.learning.message}</p>
-          </div>
-        </aside>
+        <div className="hero-side">
+          <aside
+            className="companion-card"
+            style={{ "--companion-accent": dashboard.companion.selected.accent } as CompanionStyle}
+          >
+            <div className="companion-card-top">
+              <CompanionPortrait character={dashboard.companion.selected} />
+              <div>
+                <span className="card-kicker">{t.companion}</span>
+                <h3>{dashboard.companion.selected.name}</h3>
+                <p>{dashboard.companion.selected.personality}</p>
+              </div>
+            </div>
+            <blockquote>{dashboard.companion.last_reaction.message}</blockquote>
+            <div className="companion-level-row">
+              <span>{t.level} {dashboard.companion.level}</span>
+              <strong>{dashboard.companion.total_xp} {t.xp}</strong>
+            </div>
+            <div className="companion-xp-track">
+              <span style={{ width: `${dashboard.companion.level_percent}%` }} />
+            </div>
+          </aside>
+          <aside className="learning-card compact-learning">
+            <Sparkles size={18} />
+            <div>
+              <span className="card-kicker">{t.personalization}</span>
+              <h3>{dashboard.context ? t.learningPattern : dashboard.experience.learning.active ? t.adapting : t.noTuning}</h3>
+              <p>{dashboard.context ? t.hypotheses : dashboard.experience.learning.message}</p>
+            </div>
+          </aside>
+        </div>
       </div>
 
       {dashboard.clarification && (
@@ -534,12 +579,13 @@ function ActivityScreen({ dashboard, locale, onResume, working }: {
   );
 }
 
-function ProfileScreen({ dashboard, onDashboard, locale, onLocale, onRevise, working }: {
+function ProfileScreen({ dashboard, onDashboard, locale, onLocale, onRevise, onCompanion, working }: {
   dashboard: Dashboard;
   onDashboard: (dashboard: Dashboard) => void;
   locale: Locale;
   onLocale: (locale: Locale) => void;
   onRevise: (input: DirectionRevisionInput) => Promise<boolean>;
+  onCompanion: (characterId: string) => void;
   working: boolean;
 }) {
   const t = copy(locale).profile;
@@ -667,6 +713,35 @@ function ProfileScreen({ dashboard, onDashboard, locale, onLocale, onRevise, wor
         )}
       </div>
 
+      <div className="section-heading compact">
+        <div>
+          <span className="eyebrow">{t.companions}</span>
+          <h2>{t.companionsTitle}</h2>
+          <p className="section-description">{t.companionsBody}</p>
+        </div>
+      </div>
+      <div className="companion-picker">
+        {dashboard.companion.characters.map((character) => (
+          <button
+            className={character.selected ? "companion-option selected" : "companion-option"}
+            type="button"
+            key={character.id}
+            disabled={working || character.selected}
+            onClick={() => onCompanion(character.id)}
+            style={{ "--companion-accent": character.accent } as CompanionStyle}
+          >
+            <CompanionPortrait character={character} compact />
+            <span className="companion-option-copy">
+              <strong>{character.name}</strong>
+              <small>{character.personality}</small>
+            </span>
+            <span className="companion-access">
+              {character.selected ? t.selected : t.freeIncluded}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {dashboard.context && (
         <div className="context-panel">
           <div className="section-heading compact">
@@ -754,7 +829,7 @@ export default function App() {
     if (!dashboard) return null;
     if (screen === "mission") return <MissionScreen dashboard={dashboard} onComplete={handleComplete} locale={locale} />;
     if (screen === "activity") return <ActivityScreen dashboard={dashboard} locale={locale} onResume={handleResume} working={working} />;
-    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} locale={locale} onLocale={changeLocale} onRevise={handleRevise} working={working} />;
+    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} locale={locale} onLocale={changeLocale} onRevise={handleRevise} onCompanion={handleCompanion} working={working} />;
     return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} onClarify={handleClarify} locale={locale} />;
   }, [dashboard, screen, locale, working]);
 
@@ -821,6 +896,19 @@ export default function App() {
     } catch (err) {
       setError(errorMessage(err, appCopy.directionError));
       return false;
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleCompanion(characterId: string) {
+    if (!dashboard || working) return;
+    setWorking(true);
+    setError(null);
+    try {
+      setDashboard(await selectCompanion(dashboard.user.id, characterId));
+    } catch (err) {
+      setError(errorMessage(err, appCopy.understandingError));
     } finally {
       setWorking(false);
     }

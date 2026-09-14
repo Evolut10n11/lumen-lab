@@ -320,6 +320,18 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         )
         return _decorate_dashboard(app, user_id, dashboard, locale=locale)
 
+    if action == "select_companion":
+        character_id = payload.get("character_id")
+        if not isinstance(character_id, str) or not character_id.strip():
+            raise ValueError("character_id must be a non-empty string")
+        dashboard = app.select_companion(
+            character_id,
+            user_id,
+            top=int(payload.get("top", 3)),
+            locale=locale,
+        )
+        return _decorate_dashboard(app, user_id, dashboard, locale=locale)
+
     if action == "react":
         reaction = payload.get("reaction")
         mission_id = payload.get("mission_id")

@@ -86,6 +86,9 @@ const en = {
     radarTitle: "What else is worth your attention",
     seeAll: "See all",
     personalFit: "Personal fit",
+    companion: "Your companion",
+    level: "Level",
+    xp: "XP",
   },
   mission: {
     empty: "Nothing urgent right now.",
@@ -130,6 +133,11 @@ const en = {
     focusWindow: "Realistic focus window",
     saveDirection: "Use this direction",
     cancel: "Cancel",
+    companions: "Companions",
+    companionsTitle: "Choose who works beside you",
+    companionsBody: "Three personalities are included. XP belongs to you and stays when you switch companions.",
+    freeIncluded: "Included",
+    selected: "Selected",
   },
   github: {
     updateError: "GitHub context could not be updated.",
@@ -227,6 +235,9 @@ const ru: typeof en = {
     radarTitle: "Что ещё заслуживает внимания",
     seeAll: "Показать всё",
     personalFit: "Подходит вам",
+    companion: "Ваш спутник",
+    level: "Уровень",
+    xp: "XP",
   },
   mission: {
     empty: "Сейчас ничего срочного.",
@@ -271,6 +282,11 @@ const ru: typeof en = {
     focusWindow: "Реальное время на фокус",
     saveDirection: "Выбрать это направление",
     cancel: "Отмена",
+    companions: "Спутники",
+    companionsTitle: "Выберите, кто будет рядом",
+    companionsBody: "Три характера доступны сразу. XP принадлежит вам и сохраняется при смене спутника.",
+    freeIncluded: "Доступен",
+    selected: "Выбран",
   },
   github: {
     updateError: "Не удалось обновить контекст GitHub.",

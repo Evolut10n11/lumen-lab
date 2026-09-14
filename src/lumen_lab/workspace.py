@@ -79,6 +79,10 @@ class UserWorkspace:
         return self.directory / "feedback.json"
 
     @property
+    def companion_path(self) -> Path:
+        return self.directory / "companion.json"
+
+    @property
     def proposals_path(self) -> Path:
         return self.directory / "proposals.json"
 
@@ -120,6 +124,7 @@ class UserWorkspace:
         # v0.1.1 could truncate profile.json before a UnicodeEncodeError. Recover by
         # preserving the bad file and returning the user to onboarding.
         try:
+            from .companion import load_companion_state
             from .feedback import load_feedback
             from .github_user_context import load_github_snapshot
             from .mission_radar import load_missions
@@ -159,6 +164,7 @@ class UserWorkspace:
 
         optional_state = (
             (self.feedback_path, load_feedback),
+            (self.companion_path, load_companion_state),
             (self.onboarding_context_path, load_onboarding_context),
             (self.github_context_path, load_github_snapshot),
         )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Iterable
 
+from .companion import start_companion_chapter
 from .localization import is_russian, normalize_locale
 from .mission_radar import Mission, save_missions
 from .profile import CandidateGenerationPolicy, Profile, normalized_label
@@ -416,7 +417,8 @@ def initialize_workspace(
     replace: bool = False,
     locale: str = "en",
 ) -> tuple[list[Mission], list[WorkSessionTemplate]]:
-    if workspace.initialized() and not replace:
+    was_initialized = workspace.initialized()
+    if was_initialized and not replace:
         raise ValueError(
             f"user workspace '{workspace.user_id}' already exists; pass --replace to "
             "rebuild it explicitly"
@@ -444,4 +446,6 @@ def initialize_workspace(
     write_json_atomic(workspace.work_sessions_path, session_payload)
     if replace and workspace.work_progress_path.exists():
         workspace.work_progress_path.unlink()
+    if replace and was_initialized:
+        start_companion_chapter(workspace.companion_path)
     return missions, sessions
