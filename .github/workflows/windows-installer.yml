@@ -118,6 +118,23 @@ jobs:
           python packaging/check_engine_text.py --engine $engine.FullName
           if ($LASTEXITCODE -ne 0) { throw "Installed engine corrupted Unicode or saved progress." }
 
+          $desktop = Get-ChildItem -Path $installDir -Filter lumen-desktop.exe -Recurse |
+            Where-Object { $_.Name -ne 'lumen-engine.exe' } |
+            Select-Object -First 1
+          if (-not $desktop) { throw "Installed bundle does not contain lumen-desktop.exe." }
+
+          $gui = Start-Process -FilePath $desktop.FullName -WorkingDirectory $desktop.DirectoryName -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            $gui.Refresh()
+            if ($gui.HasExited) {
+              throw "Installed Lumen GUI exited during startup with code $($gui.ExitCode)."
+            }
+          }
+          finally {
+            if (-not $gui.HasExited) { Stop-Process -Id $gui.Id -Force }
+          }
+
       - name: Upload Windows installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

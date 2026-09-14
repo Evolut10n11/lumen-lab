@@ -77,8 +77,7 @@ def test_desktop_complete_step_persists_progress(
     dashboard = request("quick_onboard", display_name="Alex", goals=["Career"])
     mission_id = dashboard["today"]["mission_id"]
 
-    request("complete_step", step=1, mission_id=mission_id)
-    refreshed = request("dashboard")
+    refreshed = request("complete_step", step=1, mission_id=mission_id)
 
     assert refreshed["today"]["progress"]["completed"] == 1
 

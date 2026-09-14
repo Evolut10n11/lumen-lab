@@ -46,7 +46,7 @@ def test_locale_switch_relocalizes_starter_work_without_resetting_progress(
         mission_id=mission_id,
         step=1,
     )
-    assert progressed["progress"]["completed"] == 1
+    assert progressed["today"]["progress"]["completed"] == 1
 
     russian = _request("bootstrap", locale="ru")
     russian_dashboard = russian["dashboard"]

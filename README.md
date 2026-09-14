@@ -268,7 +268,7 @@ lumen-doctor
 
 Desktop checks live in the dedicated Desktop CI workflow and validate both the frontend build and the Tauri host.
 
-The Windows Installer workflow builds the standalone engine with PyInstaller, smoke-tests it without a Python interpreter dependency, generates the Tauri icon set, builds the NSIS setup executable, and uploads the resulting installer artifact.
+The Windows Installer workflow builds the standalone engine with PyInstaller, smoke-tests it without a Python interpreter dependency, generates the Tauri icon set, builds and silently installs the NSIS setup executable, launches the installed GUI, and uploads the verified installer artifact.
 
 GitHub Actions also runs the Python test/lint matrix on Python 3.11, 3.12, and 3.13.
 
