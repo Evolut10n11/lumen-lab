@@ -146,6 +146,154 @@ def test_v021_backup_evidence_repairs_short_fragment_left_in_live_state(
     assert json.loads(backup.read_text(encoding="utf-8")) == original
 
 
+def test_v021_backup_proof_uses_true_strong_only_mixed_string_repair(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "profile.json"
+    prefix = "Продвинуться в цели: "
+    backup_payload = {"title": prefix + _legacy_decode("Я дизайнер")}
+    v021_live = {"title": prefix + _legacy_decode("Я") + " дизайнер"}
+    profile.write_text(json.dumps(v021_live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    assert repair_workspace_json(tmp_path) == (profile,)
+    assert json.loads(profile.read_text(encoding="utf-8")) == {
+        "title": prefix + "Я дизайнер"
+    }
+
+
+def test_v021_backup_proof_repairs_weak_unit_inside_multiword_quotes(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "profile.json"
+    prefix = "Вы обозначили «"
+    suffix = "» как приоритет"
+    backup_payload = {"title": prefix + _legacy_decode("Я дизайнер") + suffix}
+    v021_live = {"title": prefix + _legacy_decode("Я") + " дизайнер" + suffix}
+    profile.write_text(json.dumps(v021_live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    assert repair_workspace_json(tmp_path) == (profile,)
+    assert json.loads(profile.read_text(encoding="utf-8")) == {
+        "title": prefix + "Я дизайнер" + suffix
+    }
+
+
+def test_v021_backup_proof_recovers_unicode_whitespace_split_artifact(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "profile.json"
+    prefix = "Контекст: "
+    backup_payload = {"title": prefix + _legacy_decode("Работаю дизайнером")}
+    v021_live = {"title": prefix + "Р\u00a0аботаю дизайнером"}
+    assert encoding_recovery._repair_v021_json(backup_payload) == v021_live
+    profile.write_text(json.dumps(v021_live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    assert repair_workspace_json(tmp_path) == (profile,)
+    assert json.loads(profile.read_text(encoding="utf-8")) == {
+        "title": prefix + "Работаю дизайнером"
+    }
+
+
+def test_v021_emulator_matches_longest_valid_ascii_joined_span() -> None:
+    broken_goal = _legacy_decode("цель")
+    backup_value = "Ж" + "-".join([broken_goal] * 4) + "ж"
+
+    assert encoding_recovery._repair_v021_json({"value": backup_value}) == {
+        "value": "Ж" + "-".join(["цель"] * 4) + "ж"
+    }
+
+
+def test_v021_backup_proof_is_rejected_when_work_budget_is_exhausted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = tmp_path / "profile.json"
+    prefix = "Продвинуться в цели: "
+    backup_payload = {"title": prefix + _legacy_decode("Я дизайнер")}
+    live = {"title": prefix + _legacy_decode("Я") + " дизайнер"}
+    profile.write_text(json.dumps(live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(encoding_recovery, "_V021_WORK_BUDGET", 1)
+
+    assert repair_workspace_json(tmp_path) == ()
+    assert json.loads(profile.read_text(encoding="utf-8")) == live
+
+
+def test_v021_backup_proof_requires_type_strict_json_equality(tmp_path: Path) -> None:
+    profile = tmp_path / "profile.json"
+    backup_payload = {
+        "context": _legacy_decode("Работаю дизайнером"),
+        "legitimate_code": "РЎ",
+        "flag": True,
+    }
+    live = {
+        "context": "Работаю дизайнером",
+        "legitimate_code": "РЎ",
+        "flag": 1,
+    }
+    profile.write_text(json.dumps(live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    assert repair_workspace_json(tmp_path) == ()
+    assert json.loads(profile.read_text(encoding="utf-8")) == live
+
+
+def test_v021_replacement_rechecks_proven_live_payload_before_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = tmp_path / "profile.json"
+    backup_payload = {
+        "goal": _legacy_decode("Я"),
+        "context": _legacy_decode("Работаю дизайнером"),
+    }
+    live = {"goal": _legacy_decode("Я"), "context": "Работаю дизайнером"}
+    newer = {**live, "new_user_edit": "keep me"}
+    profile.write_text(json.dumps(live, ensure_ascii=False), encoding="utf-8")
+    backup = profile.with_name(f"{profile.name}.before-encoding-repair")
+    backup.write_text(
+        json.dumps(backup_payload, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    real_repair = encoding_recovery._repair_json_file_locked
+
+    def save_before_replacement(candidate: Path, **kwargs: Any) -> bool | None:
+        if candidate == profile and kwargs.get("replacement") is not None:
+            profile.write_text(json.dumps(newer, ensure_ascii=False), encoding="utf-8")
+        return real_repair(candidate, **kwargs)
+
+    monkeypatch.setattr(
+        encoding_recovery,
+        "_repair_json_file_locked",
+        save_before_replacement,
+    )
+
+    assert repair_workspace_json(tmp_path) == ()
+    assert json.loads(profile.read_text(encoding="utf-8")) == newer
+
+
 def test_new_backup_evidence_invalidates_unchanged_workspace_cache(
     tmp_path: Path,
 ) -> None:
@@ -383,6 +531,41 @@ def test_backup_directory_entry_is_synced_before_live_replace(
 
     assert repair_json_file(path) is True
     assert [event for event, _path in events] == ["backup-synced", "live-write"]
+
+
+def test_retry_resyncs_existing_backup_before_live_replace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "profile.json"
+    original = json.dumps(
+        {"goal": _legacy_decode("Завершить макет")},
+        ensure_ascii=False,
+    ).encode()
+    path.write_bytes(original)
+
+    def fail_directory_sync(_candidate: Path) -> None:
+        raise OSError("directory sync failed")
+
+    monkeypatch.setattr(
+        encoding_recovery,
+        "fsync_parent_directory",
+        fail_directory_sync,
+    )
+    assert repair_json_file(path) is False
+    backup = path.with_name(f"{path.name}.before-encoding-repair")
+    assert backup.read_bytes() == original
+    assert path.read_bytes() == original
+
+    synced: list[Path] = []
+    monkeypatch.setattr(
+        encoding_recovery,
+        "fsync_parent_directory",
+        synced.append,
+    )
+    assert repair_json_file(path) is True
+    assert synced == [backup]
+    assert json.loads(path.read_text(encoding="utf-8"))["goal"] == "Завершить макет"
 
 
 def test_existing_valid_backup_is_immutable_and_new_source_gets_snapshot(

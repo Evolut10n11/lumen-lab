@@ -23,6 +23,13 @@ _MAX_DECODING_DEPTH = 3
 _QUOTE_PAIRS = (("«", "»"), ("“", "”"), ('"', '"'), ("'", "'"))
 _WORKSPACE_SCAN_CACHE: dict[Path, tuple[tuple[str, int, int, int], ...]] = {}
 _WORKSPACE_SCAN_CACHE_LOCK = threading.Lock()
+_NO_REPLACEMENT = object()
+_V021_UNPROVEN = object()
+_V021_WORK_BUDGET = 250_000
+
+
+class _V021BudgetExhausted(Exception):
+    pass
 
 
 def _mojibake_score(value: str) -> int:
@@ -95,11 +102,12 @@ def _decode_unit(value: str, start: int, encoding: str) -> tuple[int, str] | Non
     return None
 
 
-def _repair_strong_runs(value: str) -> str:
+def _repair_strong_runs(value: str, *, max_repairs: int | None = None) -> str:
     """Repair every run containing at least two adjacent encoded UTF-8 units."""
 
     output: list[str] = []
     index = 0
+    repairs = 0
     while index < len(value):
         best: tuple[int, str] | None = None
         rejected_until = index + 1
@@ -129,6 +137,10 @@ def _repair_strong_runs(value: str) -> str:
         else:
             index, candidate = best
             output.append(candidate)
+            repairs += 1
+            if max_repairs is not None and repairs >= max_repairs:
+                output.append(value[index:])
+                break
     return "".join(output)
 
 
@@ -144,7 +156,13 @@ def _repair_quoted_units(value: str) -> str:
 
         def replace(match: re.Match[str]) -> str:
             content = match.group(2)
-            candidate = _repair_whole_text(content, allow_single_units=True)
+            parts = re.split(r"([ \t\r\n]+)", content)
+            candidate = "".join(
+                part
+                if part.isspace()
+                else _repair_token_fragment(part, allow_single_units=True)
+                for part in parts
+            )
             return f"{match.group(1)}{candidate}{match.group(3)}"
 
         repaired = pattern.sub(replace, repaired)
@@ -160,7 +178,11 @@ def _repair_token_fragment(value: str, *, allow_single_units: bool) -> str:
     return _repair_strong_runs(repaired)
 
 
-def repair_mojibake_text(value: str, *, allow_single_units: bool = False) -> str:
+def repair_mojibake_text(
+    value: str,
+    *,
+    allow_single_units: bool = False,
+) -> str:
     """Reverse high-confidence mojibake in complete or localized mixed strings.
 
     Older Windows desktop builds could decode user-entered UTF-8 with the active
@@ -177,6 +199,8 @@ def repair_mojibake_text(value: str, *, allow_single_units: bool = False) -> str
             repaired = whole
             evidence_found = True
             continue
+        if evidence_found:
+            repaired = _repair_quoted_units(repaired)
         # Split only protocol whitespace. A cp1251 decoding of the UTF-8 bytes
         # for Cyrillic `Р` contains U+00A0, which must stay inside its fragment.
         parts = re.split(r"([ \t\r\n]+)", repaired)
@@ -207,21 +231,34 @@ def _has_strong_mojibake(value: Any) -> bool:
     return False
 
 
-def repair_mojibake_json(value: Any, *, allow_single_units: bool | None = None) -> Any:
+def repair_mojibake_json(
+    value: Any,
+    *,
+    allow_single_units: bool | None = None,
+) -> Any:
     """Repair strings and string keys recursively in JSON-compatible state."""
 
     if allow_single_units is None:
         allow_single_units = _has_strong_mojibake(value)
     if isinstance(value, str):
-        return repair_mojibake_text(value, allow_single_units=allow_single_units)
+        return repair_mojibake_text(
+            value,
+            allow_single_units=allow_single_units,
+        )
     if isinstance(value, list):
         return [
-            repair_mojibake_json(item, allow_single_units=allow_single_units)
+            repair_mojibake_json(
+                item,
+                allow_single_units=allow_single_units,
+            )
             for item in value
         ]
     if isinstance(value, dict):
         keys = [
-            repair_mojibake_text(key, allow_single_units=allow_single_units)
+            repair_mojibake_text(
+                key,
+                allow_single_units=allow_single_units,
+            )
             if isinstance(key, str)
             else key
             for key in value
@@ -244,6 +281,112 @@ def repair_mojibake_json(value: Any, *, allow_single_units: bool | None = None) 
             )
         return repaired
     return value
+
+
+def _spend_v021_budget(budget: list[int], value: str) -> None:
+    budget[0] -= max(1, len(value))
+    if budget[0] < 0:
+        raise _V021BudgetExhausted
+
+
+def _repair_v021_whole_text(value: str, budget: list[int]) -> str:
+    """Reproduce the strict whole-value rule shipped in Lumen 0.2.1."""
+
+    _spend_v021_budget(budget, value)
+    before_score = _mojibake_score(value)
+    if before_score < 2:
+        return value
+    best = value
+    best_score = before_score
+    for encoding in _LEGACY_ENCODINGS:
+        try:
+            candidate = value.encode(encoding).decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            continue
+        candidate_score = _mojibake_score(candidate)
+        if candidate != value and candidate_score <= before_score - 2:
+            if candidate_score < best_score:
+                best = candidate
+                best_score = candidate_score
+    return best
+
+
+def _repair_v021_token_fragment(value: str, budget: list[int]) -> str:
+    repaired = _repair_v021_whole_text(value, budget)
+    if repaired != value:
+        return repaired
+    for start, character in enumerate(value):
+        if character not in _MOJIBAKE_MARKERS:
+            continue
+        for end in range(len(value), start + 1, -1):
+            fragment = value[start:end]
+            repaired_fragment = _repair_v021_whole_text(fragment, budget)
+            if repaired_fragment != fragment:
+                return f"{value[:start]}{repaired_fragment}{value[end:]}"
+    return value
+
+
+def _repair_v021_text(value: str, budget: list[int]) -> str:
+    """Reproduce v0.2.1's three-pass, Unicode-whitespace migration output."""
+
+    repaired = value
+    for _ in range(3):
+        whole = _repair_v021_whole_text(repaired, budget)
+        if whole != repaired:
+            repaired = whole
+            continue
+        parts = re.split(r"(\s+)", repaired)
+        segmented = "".join(
+            part if part.isspace() else _repair_v021_token_fragment(part, budget)
+            for part in parts
+        )
+        if segmented == repaired:
+            break
+        repaired = segmented
+    return repaired
+
+
+def _repair_v021_json_value(value: Any, budget: list[int]) -> Any:
+    if isinstance(value, str):
+        return _repair_v021_text(value, budget)
+    if isinstance(value, list):
+        return [_repair_v021_json_value(item, budget) for item in value]
+    if isinstance(value, dict):
+        keys = [
+            _repair_v021_text(key, budget) if isinstance(key, str) else key
+            for key in value
+        ]
+        key_counts = Counter(keys)
+        repaired: dict[Any, Any] = {}
+        for (key, item), repaired_key in zip(value.items(), keys, strict=True):
+            if key_counts[repaired_key] > 1:
+                repaired_key = key
+            repaired[repaired_key] = _repair_v021_json_value(item, budget)
+        return repaired
+    return value
+
+
+def _repair_v021_json(value: Any) -> Any:
+    budget = [_V021_WORK_BUDGET]
+    try:
+        return _repair_v021_json_value(value, budget)
+    except _V021BudgetExhausted:
+        return _V021_UNPROVEN
+
+
+def _json_equal_strict(left: Any, right: Any) -> bool:
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _json_equal_strict(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+    if isinstance(left, dict):
+        return left.keys() == right.keys() and all(
+            _json_equal_strict(left[key], right[key]) for key in left
+        )
+    return bool(left == right)
 
 
 def _valid_json_bytes(data: bytes) -> bool:
@@ -291,13 +434,24 @@ def _repair_json_file_locked(
     path: Path,
     *,
     allow_single_units: bool | None = None,
+    replacement: Any = _NO_REPLACEMENT,
+    expected_original: Any = _NO_REPLACEMENT,
 ) -> bool | None:
     try:
         source_bytes = path.read_bytes()
         original = json.loads(source_bytes.decode("utf-8"))
-        repaired = repair_mojibake_json(
+        if expected_original is not _NO_REPLACEMENT and not _json_equal_strict(
             original,
-            allow_single_units=allow_single_units,
+            expected_original,
+        ):
+            return None
+        repaired = (
+            repair_mojibake_json(
+                original,
+                allow_single_units=allow_single_units,
+            )
+            if replacement is _NO_REPLACEMENT
+            else replacement
         )
         if repaired == original:
             return False
@@ -377,7 +531,7 @@ def repair_workspace_json(directory: Path) -> tuple[Path, ...]:
                     payload
                 )
 
-            incomplete_v021_paths: set[Path] = set()
+            v021_replacements: dict[Path, tuple[Any, Any]] = {}
             if not live_strong_evidence:
                 for path, live_payload in live_payloads.items():
                     backup = path.with_name(
@@ -389,20 +543,36 @@ def repair_workspace_json(directory: Path) -> tuple[Path, ...]:
                         continue
                     if not _has_strong_mojibake(backup_payload):
                         continue
-                    expected_v021_state = repair_mojibake_json(
-                        backup_payload,
-                        allow_single_units=False,
-                    )
-                    if live_payload == expected_v021_state:
-                        incomplete_v021_paths.add(path)
+                    expected_v021_state = _repair_v021_json(backup_payload)
+                    if expected_v021_state is _V021_UNPROVEN:
+                        continue
+                    if _json_equal_strict(live_payload, expected_v021_state):
+                        v021_replacements[path] = (
+                            live_payload,
+                            repair_mojibake_json(
+                                backup_payload,
+                                allow_single_units=True,
+                            ),
+                        )
 
             repaired: list[Path] = []
             failed = False
             for path in paths:
+                v021_proof = v021_replacements.get(path)
                 result = _repair_json_file_locked(
                     path,
                     allow_single_units=(
-                        live_strong_evidence or path in incomplete_v021_paths
+                        live_strong_evidence or path in v021_replacements
+                    ),
+                    replacement=(
+                        v021_proof[1]
+                        if v021_proof is not None
+                        else _NO_REPLACEMENT
+                    ),
+                    expected_original=(
+                        v021_proof[0]
+                        if v021_proof is not None
+                        else _NO_REPLACEMENT
                     ),
                 )
                 if result is True:
