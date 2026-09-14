@@ -83,6 +83,8 @@ def _repair_whole_text(value: str, *, allow_single_units: bool) -> str:
             and _is_single_cyrillic_unit(value, candidate, encoding)
             and candidate.encode("utf-8").decode(encoding) == value
         )
+        if _is_fully_ambiguous_cp1251_repair(value, candidate, encoding):
+            continue
         if (
             candidate != value
             and len(candidate) < len(value)
@@ -113,6 +115,53 @@ def _decode_unit(value: str, start: int, encoding: str) -> tuple[int, str] | Non
     return None
 
 
+def _is_fully_ambiguous_cp1251_repair(
+    value: str,
+    candidate: str,
+    encoding: str,
+) -> bool:
+    """Detect reversible cp1251 spans that are also valid Russian text.
+
+    Some legacy-decoded UTF-8 units, such as `Рё`, are composed entirely of
+    ordinary Russian letters and can therefore be legitimate user content.
+    Multiple such units must not become stronger evidence merely by repetition.
+    If every reversible unit in a candidate has that ambiguity, fail closed.
+    """
+
+    if encoding != "cp1251":
+        return False
+
+    rebuilt: list[str] = []
+    ambiguous_units = 0
+    unambiguous_units = 0
+    index = 0
+    while index < len(value):
+        unit = _decode_unit(value, index, encoding)
+        if unit is None:
+            rebuilt.append(value[index])
+            index += 1
+            continue
+        end, character = unit
+        fragment = value[index:end]
+        is_ambiguous = (
+            0x0400 <= ord(character) <= 0x04FF
+            and fragment != "Р\u00a0"
+            and all(source in _RUSSIAN_ALPHABET for source in fragment)
+        )
+        if is_ambiguous:
+            ambiguous_units += 1
+        else:
+            unambiguous_units += 1
+        rebuilt.append(character)
+        index = end
+
+    return (
+        ambiguous_units > 0
+        and unambiguous_units == 0
+        and "".join(rebuilt) == candidate
+    )
+
+
 def _repair_strong_runs(value: str, *, max_repairs: int | None = None) -> str:
     """Repair every run containing at least two adjacent encoded UTF-8 units."""
 
@@ -133,6 +182,13 @@ def _repair_strong_runs(value: str, *, max_repairs: int | None = None) -> str:
                     continue
                 candidate = "".join(decoded)
                 fragment = value[index:cursor]
+                if _is_fully_ambiguous_cp1251_repair(
+                    fragment,
+                    candidate,
+                    encoding,
+                ):
+                    rejected_until = max(rejected_until, cursor)
+                    continue
                 if _mojibake_score(fragment) - _mojibake_score(candidate) < 2:
                     # Every unit starts with a marker and decodes to one
                     # character, so marker reduction cannot be negative. If a
@@ -168,42 +224,34 @@ def _repair_quoted_units(value: str) -> str:
         def replace(match: re.Match[str]) -> str:
             content = match.group(2)
             parts = re.split(r"([ \t\r\n]+)", content)
-            candidate_parts: list[str] = []
-            for part in parts:
-                if part.isspace():
-                    candidate_parts.append(part)
-                    continue
-                candidate = _repair_token_fragment(
-                    part,
-                    allow_single_units=True,
-                )
-                if candidate == part:
-                    start = 0
-                    end = len(part)
-                    while start < end and unicodedata.category(
-                        part[start]
-                    ).startswith("P"):
-                        start += 1
-                    while end > start and unicodedata.category(
-                        part[end - 1]
-                    ).startswith("P"):
-                        end -= 1
-                    if start or end != len(part):
-                        core = part[start:end]
-                        repaired_core = _repair_token_fragment(
-                            core,
-                            allow_single_units=True,
-                        )
-                        if repaired_core != core:
-                            candidate = (
-                                f"{part[:start]}{repaired_core}{part[end:]}"
-                            )
-                candidate_parts.append(candidate)
-            candidate = "".join(candidate_parts)
+            candidate = "".join(
+                part
+                if part.isspace()
+                else _repair_token_fragment(part, allow_single_units=True)
+                for part in parts
+            )
             return f"{match.group(1)}{candidate}{match.group(3)}"
 
         repaired = pattern.sub(replace, repaired)
     return repaired
+
+
+def _repair_boundary_punctuation(value: str) -> str:
+    """Repair one evidence-gated unit while preserving boundary punctuation."""
+
+    start = 0
+    end = len(value)
+    while start < end and unicodedata.category(value[start]).startswith("P"):
+        start += 1
+    while end > start and unicodedata.category(value[end - 1]).startswith("P"):
+        end -= 1
+    if start == 0 and end == len(value):
+        return value
+    core = value[start:end]
+    repaired_core = _repair_whole_text(core, allow_single_units=True)
+    if repaired_core == core:
+        return value
+    return f"{value[:start]}{repaired_core}{value[end:]}"
 
 
 def _repair_token_fragment(value: str, *, allow_single_units: bool) -> str:
@@ -211,6 +259,9 @@ def _repair_token_fragment(value: str, *, allow_single_units: bool) -> str:
     if repaired != value:
         return repaired
     if allow_single_units:
+        repaired = _repair_boundary_punctuation(value)
+        if repaired != value:
+            return repaired
         repaired = _repair_quoted_units(value)
     return _repair_strong_runs(repaired)
 
