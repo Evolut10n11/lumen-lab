@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import GitHubConnection from "./GitHubConnection";
+import RecommendationExplanation from "./RecommendationExplanation";
 import { copy, detectLocale, errorMessage, persistLocale } from "./i18n";
 import {
   answerClarification,
@@ -366,6 +367,12 @@ function HomeScreen({ dashboard, setScreen, onReact, onClarify, locale }: {
                 <span><Clock3 size={16} /> {today.focus_minutes} {t.minFocus}</span>
                 <span><Target size={16} /> {today.progress.completed}/{today.progress.total} {t.steps}</span>
               </div>
+              <RecommendationExplanation
+                compact
+                label={t.personalization}
+                reasons={today.selection?.reasons}
+                exclude={today.why_now}
+              />
             </>
           )}
           <div className="focus-actions">
@@ -511,6 +518,11 @@ function MissionScreen({ dashboard, onComplete, locale }: {
             <span className="card-kicker">{t.whyNow}</span>
             <p>{today.why_now}</p>
           </div>
+          <RecommendationExplanation
+            label={copy(locale).home.personalization}
+            reasons={today.selection?.reasons}
+            exclude={today.why_now}
+          />
           <div className="detail-card">
             <span className="card-kicker">{t.doneMeans}</span>
             <p>{today.definition_of_done}</p>
