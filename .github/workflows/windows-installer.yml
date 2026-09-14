@@ -135,11 +135,24 @@ jobs:
             if (-not $gui.HasExited) { Stop-Process -Id $gui.Id -Force }
           }
 
+      - name: Generate installer SHA-256 checksum
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem apps\desktop\src-tauri\target\release\bundle\nsis\*.exe | Select-Object -First 1
+          if (-not $installer) { throw "NSIS installer was not produced." }
+
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $installer.FullName).Hash.ToLowerInvariant()
+          $checksumPath = "$($installer.FullName).sha256"
+          "$hash  $($installer.Name)" | Set-Content -Path $checksumPath -Encoding ascii
+          Get-Content $checksumPath
+
       - name: Upload Windows installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: lumen-windows-installer-${{ github.sha }}
-          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+            apps/desktop/src-tauri/target/release/bundle/nsis/*.sha256
           if-no-files-found: error
 
   publish-release:
@@ -158,6 +171,11 @@ jobs:
         with:
           name: lumen-windows-installer-${{ github.sha }}
           path: release-assets
+
+      - name: Verify installer checksum
+        working-directory: release-assets
+        shell: bash
+        run: sha256sum --check *.sha256
 
       - name: Publish GitHub Release if this version is new
         env:
@@ -188,12 +206,12 @@ jobs:
           fi
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            gh release create "$tag" release-assets/*.exe \
+            gh release create "$tag" release-assets/*.exe release-assets/*.sha256 \
               --repo "${GITHUB_REPOSITORY}" \
               "${release_notes[@]}" \
               --title "Lumen $tag"
           else
-            gh release create "$tag" release-assets/*.exe \
+            gh release create "$tag" release-assets/*.exe release-assets/*.sha256 \
               --repo "${GITHUB_REPOSITORY}" \
               --target "${GITHUB_SHA}" \
               "${release_notes[@]}" \
