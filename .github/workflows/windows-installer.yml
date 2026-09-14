@@ -121,19 +121,46 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: build-installer
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
       - name: Download installer artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: lumen-windows-installer-${{ github.sha }}
           path: release-assets
 
-      - name: Publish GitHub Release
+      - name: Publish GitHub Release if this version is new
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" release-assets/*.exe --repo "${{ github.repository }}" --generate-notes --title "Lumen ${{ github.ref_name }}"
+        shell: bash
+        run: |
+          version="$(python3 -c 'import json; print(json.load(open("apps/desktop/src-tauri/tauri.conf.json", encoding="utf-8"))["version"])')"
+          tag="v${version}"
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if gh release view "$tag" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "GitHub Release $tag already exists; nothing to publish."
+            exit 0
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            gh release create "$tag" release-assets/*.exe \
+              --repo "${GITHUB_REPOSITORY}" \
+              --generate-notes \
+              --title "Lumen $tag"
+          else
+            gh release create "$tag" release-assets/*.exe \
+              --repo "${GITHUB_REPOSITORY}" \
+              --target "${GITHUB_SHA}" \
+              --generate-notes \
+              --title "Lumen $tag"
+          fi
