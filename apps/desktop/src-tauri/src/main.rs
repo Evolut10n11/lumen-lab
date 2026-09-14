@@ -51,7 +51,7 @@ fn bundled_engine_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 fn engine_command(app: &tauri::AppHandle) -> Result<(Command, String), String> {
     if let Ok(python) = env::var("LUMEN_PYTHON") {
         let mut command = Command::new(&python);
-        command.arg("-m").arg("lumen_lab.desktop_bridge");
+        command.arg("-m").arg("lumen_lab.packaged_engine");
         return Ok((command, format!("Python override '{python}'")));
     }
 
@@ -63,7 +63,7 @@ fn engine_command(app: &tauri::AppHandle) -> Result<(Command, String), String> {
 
         let python = "python".to_string();
         let mut command = Command::new(&python);
-        command.arg("-m").arg("lumen_lab.desktop_bridge");
+        command.arg("-m").arg("lumen_lab.packaged_engine");
         return Ok((command, "development Python engine".to_string()));
     }
 
@@ -84,8 +84,9 @@ fn lumen_request(app: tauri::AppHandle, request: String) -> Result<String, Strin
 
     let (mut command, engine_label) = engine_command(&app)?;
 
-    // The desktop bridge speaks JSON over stdio. On Windows, Python can otherwise
-    // inherit the active ANSI code page while Tauri expects UTF-8.
+    // Helpful for development interpreters, but NOT the packaged transport
+    // contract: PyInstaller can ignore Python environment configuration.
+    // packaged_engine owns explicit UTF-8 bytes on both sides of the pipe.
     command
         .env("PYTHONIOENCODING", "utf-8")
         .env("PYTHONUTF8", "1");
@@ -108,12 +109,14 @@ fn lumen_request(app: tauri::AppHandle, request: String) -> Result<String, Strin
         .wait_with_output()
         .map_err(|error| format!("Lumen engine did not finish correctly ({engine_label}): {error}"))?;
 
-    // UTF-8 is the protocol. Keep a lossy fallback so a localized Windows runtime
-    // message cannot make the whole desktop app fail before we can show diagnostics.
-    let stdout = match String::from_utf8(output.stdout) {
-        Ok(stdout) => stdout,
-        Err(error) => String::from_utf8_lossy(error.as_bytes()).into_owned(),
-    };
+    // Never turn invalid protocol bytes into replacement characters and call
+    // that success. Lossy decoding is reserved for human-readable stderr below.
+    let stdout = String::from_utf8(output.stdout).map_err(|error| {
+        format!(
+            "Lumen engine returned invalid UTF-8 at byte {} ({engine_label}). No response text was substituted.",
+            error.utf8_error().valid_up_to()
+        )
+    })?;
 
     if !stdout.trim().is_empty() {
         return Ok(stdout);
