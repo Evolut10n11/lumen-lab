@@ -125,6 +125,7 @@ class UserWorkspace:
         # preserving the bad file and returning the user to onboarding.
         try:
             from .companion import load_companion_state
+            from .encoding_recovery import repair_workspace_json
             from .feedback import load_feedback
             from .github_user_context import load_github_snapshot
             from .mission_radar import load_missions
@@ -136,6 +137,10 @@ class UserWorkspace:
                 validate_progress_for_template,
             )
 
+            # v0.1.x could also persist valid JSON whose user-entered UTF-8 text had
+            # already been decoded through the Windows code page. Repair that state
+            # before validation so upgrading users do not have to onboard again.
+            repair_workspace_json(self.directory)
             profile = load_profile(self.profile_path)
             missions = load_missions(self.missions_path)
             templates = load_templates(self.work_sessions_path)
