@@ -82,6 +82,22 @@ def test_desktop_complete_step_persists_progress(
     assert refreshed["today"]["progress"]["completed"] == 1
 
 
+def test_desktop_can_resume_a_deferred_mission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    dashboard = request("quick_onboard", display_name="Alex", goals=["Career"])
+    mission_id = dashboard["today"]["mission_id"]
+
+    deferred = request("react", reaction="not_now", mission_id=mission_id)
+    resumed = request("resume_mission", mission_id=mission_id)
+
+    assert [item["id"] for item in deferred["paused"]] == [mission_id]
+    assert resumed["paused"] == []
+    assert mission_id in {item["id"] for item in resumed["radar"]}
+
+
 def test_desktop_bridge_rejects_unknown_action(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

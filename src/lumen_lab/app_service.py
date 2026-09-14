@@ -28,7 +28,7 @@ from .work_session import (
 )
 from .workspace import UserWorkspace
 
-APP_SCHEMA_VERSION = 3
+APP_SCHEMA_VERSION = 4
 
 
 def _finalize_completed_missions(
@@ -396,6 +396,7 @@ class LumenApplication:
         radar = radar_snapshot(missions, top=top, profile=profile, feedback=feedback)
 
         active_missions = [mission for mission in missions if mission.status == "active"]
+        paused_missions = [mission for mission in missions if mission.status == "paused"]
         today: dict[str, Any] | None = None
         if active_missions:
             mission = choose_mission(missions, profile=profile, feedback=feedback)
@@ -427,6 +428,14 @@ class LumenApplication:
             "experience": _experience_payload(profile, today, feedback, locale=locale),
             "today": today,
             "radar": radar,
+            "paused": [
+                {
+                    "id": mission.id,
+                    "title": mission.title,
+                    "why_now": mission.why_now,
+                }
+                for mission in paused_missions
+            ],
             "personalization": {
                 "adapting": feedback.events > 0,
                 "signal_count": feedback.events,
@@ -482,7 +491,56 @@ class LumenApplication:
             sentiment=sentiment,
             include_tags=include_tags,
         )
+        if action_key == "not_now":
+            set_mission_status(
+                workspace.missions_path,
+                missions,
+                mission.id,
+                "paused",
+            )
         return self.dashboard(workspace.user_id, top=top, locale=locale)
+
+    def resume_mission(
+        self,
+        mission_id: str,
+        user_id: str | None = None,
+        *,
+        top: int = 3,
+        locale: str = "en",
+    ) -> dict[str, Any]:
+        workspace = self.workspace(user_id)
+        missions = load_missions(workspace.missions_path)
+        mission = next((item for item in missions if item.id == mission_id), None)
+        if mission is None or mission.status != "paused":
+            raise ValueError(f"paused mission not found: {mission_id}")
+        set_mission_status(
+            workspace.missions_path,
+            missions,
+            mission.id,
+            "active",
+        )
+        return self.dashboard(workspace.user_id, top=top, locale=locale)
+
+    def pause_goal(self, goal: str, user_id: str | None = None) -> int:
+        goal_key = normalized_label(goal)
+        if not goal_key:
+            raise ValueError("goal must be a non-empty string")
+        workspace = self.workspace(user_id)
+        missions = load_missions(workspace.missions_path)
+        paused_ids = {
+            mission.id
+            for mission in missions
+            if mission.status == "active"
+            and goal_key in {normalized_label(tag) for tag in mission.tags}
+        }
+        if not paused_ids:
+            return 0
+        updated = [
+            replace(mission, status="paused") if mission.id in paused_ids else mission
+            for mission in missions
+        ]
+        save_missions(workspace.missions_path, updated)
+        return len(paused_ids)
 
     def rate_mission(
         self,

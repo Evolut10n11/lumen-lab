@@ -250,6 +250,7 @@ def answer_context_clarification(
                 focus["confidence"] = 0.98
                 focus["source"] = "adjusted_by_user"
             effects["focus_minutes"] = focus_minutes
+            effects["resume_mission_id"] = learning.get("last_mission_id")
         elif choice_key == "not_useful":
             effects["dislike_mission_id"] = learning.get("last_mission_id")
         learning["primary_goal_deferrals"] = 0

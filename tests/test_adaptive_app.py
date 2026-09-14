@@ -38,7 +38,7 @@ def test_dashboard_exposes_product_actions_instead_of_tuning_controls(tmp_path: 
     assert payload["personalization"] == {"adapting": False, "signal_count": 0}
 
 
-def test_not_now_only_downranks_the_current_item(tmp_path: Path) -> None:
+def test_not_now_pauses_only_the_current_item(tmp_path: Path) -> None:
     app = _app_with_user(tmp_path)
     before = app.dashboard("alice")
     mission_id = before["today"]["mission_id"]
@@ -49,6 +49,11 @@ def test_not_now_only_downranks_the_current_item(tmp_path: Path) -> None:
     assert feedback.missions == {mission_id: -1}
     assert feedback.tags == {}
     assert after["personalization"] == {"adapting": True, "signal_count": 1}
+    assert after["today"]["mission_id"] != mission_id
+    assert [item["id"] for item in after["paused"]] == [mission_id]
+    workspace = UserWorkspace.from_root(tmp_path, "alice")
+    paused = next(item for item in load_missions(workspace.missions_path) if item.id == mission_id)
+    assert paused.status == "paused"
 
 
 def test_more_like_this_generalizes_to_the_kind_of_work(tmp_path: Path) -> None:

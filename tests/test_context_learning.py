@@ -135,6 +135,7 @@ def test_repeated_deferral_can_shrink_focus_window(tmp_path: Path) -> None:
         choice="make_smaller",
     )
     assert effects["focus_minutes"] == 30
+    assert effects["resume_mission_id"] == "m2"
     assert updated["answers"]["focus_minutes"] == 30
     assert clarification_for_context(updated) is None
 
@@ -176,6 +177,38 @@ def test_desktop_reactions_update_context_and_surface_clarification(
     )
     assert answered["clarification"] is None
     assert _goal_confidence(answered["context"]) >= 0.76
+
+
+def test_pausing_goal_removes_its_missions_from_today(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    dashboard = _request(
+        "guided_onboard",
+        display_name="Alex",
+        current_context="Working full time",
+        desired_change="I want to build an AI product",
+        focus_minutes=30,
+        friction="",
+    )
+    mission_id = dashboard["today"]["mission_id"]
+    for _ in range(2):
+        dashboard = _request(
+            "react",
+            reaction="less_like_this",
+            mission_id=mission_id,
+        )
+
+    paused = _request(
+        "clarify_context",
+        clarification_id="primary_goal_fit",
+        choice="pause_goal",
+    )
+
+    assert paused["today"] is None
+    assert paused["summary"]["active_missions"] == 0
+    assert len(paused["paused"]) == 3
 
 
 def test_desktop_bootstrap_decorates_existing_dashboard_with_context(
