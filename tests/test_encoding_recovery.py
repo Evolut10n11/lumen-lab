@@ -13,6 +13,7 @@ from lumen_lab.encoding_recovery import (
     repair_json_file,
     repair_mojibake_json,
     repair_mojibake_text,
+    repair_workspace_json,
 )
 from lumen_lab.onboarding import load_onboarding_context
 from lumen_lab.workspace import UserWorkspace
@@ -83,6 +84,36 @@ def test_repair_mojibake_text_repairs_user_text_inside_russian_template() -> Non
     short_goal = _legacy_decode("Я дизайнер")
     assert repair_mojibake_text(f"Продвинуться в цели: {short_goal}") == (
         "Продвинуться в цели: Я дизайнер"
+    )
+
+
+def test_single_marker_text_is_unchanged_without_independent_evidence() -> None:
+    diagnostic = "Diagnose Ã© rendering"
+
+    assert repair_mojibake_text(diagnostic) == diagnostic
+    assert repair_mojibake_json({"note": diagnostic}) == {"note": diagnostic}
+
+
+def test_workspace_evidence_allows_short_fragment_repair_across_files(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "profile.json"
+    context = tmp_path / "onboarding_context.json"
+    profile.write_text(
+        json.dumps({"goal": _legacy_decode("Я")}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    context.write_text(
+        json.dumps({"context": _legacy_decode("Работаю дизайнером")}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    repaired = repair_workspace_json(tmp_path)
+
+    assert set(repaired) == {profile, context}
+    assert json.loads(profile.read_text(encoding="utf-8"))["goal"] == "Я"
+    assert json.loads(context.read_text(encoding="utf-8"))["context"] == (
+        "Работаю дизайнером"
     )
 
 
