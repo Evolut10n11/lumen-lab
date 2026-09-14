@@ -4,10 +4,10 @@ Lumen 0.2.2 completes the automatic recovery of Russian text saved by older Wind
 
 ## What changed
 
-- Short one-character Cyrillic words such as `Я` are restored when they appear inside otherwise-correct localized mission text, including profiles first touched by v0.2.1.
+- Short one-character Cyrillic words such as `Я` are restored when they appear inside otherwise-correct localized mission text. A v0.2.1 backup enables this only when it exactly proves that the live file is the corresponding incompletely repaired state.
 - Recovery now repairs every independent damaged fragment in one run without treating valid quoted letters such as `«Р»` or `«С»` as damaged text.
-- All Lumen JSON writers share a cross-process lock, and recovery verifies the exact source bytes before replacement so concurrent Lumen saves are serialized safely.
-- The first valid pre-repair backup remains immutable. Invalid partial backups left by v0.2.1 are replaced atomically, while later distinct source versions receive content-addressed snapshots.
+- All Lumen JSON writers share a cross-process lock with a bounded deadline, and recovery verifies the exact source bytes before replacement so concurrent Lumen saves are serialized safely.
+- The first valid pre-repair backup remains immutable and its directory entry is flushed before live state changes. Invalid partial backups left by v0.2.1 are replaced atomically, while later distinct source versions receive content-addressed snapshots.
 - Unchanged workspaces are skipped after their first scan, and fragment detection is linear rather than cubic for long healthy text.
 
 ## Compatibility

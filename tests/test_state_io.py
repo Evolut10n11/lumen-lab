@@ -33,3 +33,21 @@ def test_failed_atomic_replace_preserves_previous_state(
 
     assert json.loads(path.read_text(encoding="utf-8")) == {"value": "old"}
     assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_workspace_lock_has_a_bounded_deadline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "state.json"
+
+    def always_busy(_stream: object) -> None:
+        raise BlockingIOError("busy")
+
+    monkeypatch.setattr(state_io, "_try_lock", always_busy)
+    monkeypatch.setattr(state_io, "_LOCK_TIMEOUT_SECONDS", 0.0)
+
+    with pytest.raises(TimeoutError, match="workspace lock"):
+        state_io.write_json_atomic(path, {"value": "new"})
+
+    assert not path.exists()

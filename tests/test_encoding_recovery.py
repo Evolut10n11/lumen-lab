@@ -158,13 +158,36 @@ def test_new_backup_evidence_invalidates_unchanged_workspace_cache(
     backup = profile.with_name(f"{profile.name}.before-encoding-repair")
     backup.write_text(
         json.dumps(
-            {"context": _legacy_decode("Работаю дизайнером")},
+            {
+                "goal": _legacy_decode("Я"),
+                "context": _legacy_decode("Работаю дизайнером"),
+            },
             ensure_ascii=False,
         ),
         encoding="utf-8",
     )
     assert repair_workspace_json(tmp_path) == (profile,)
     assert json.loads(profile.read_text(encoding="utf-8"))["goal"] == "Я"
+
+
+def test_historical_backup_does_not_enable_weak_repair_after_new_save(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "profile.json"
+    profile.write_text(
+        json.dumps(
+            {"context": _legacy_decode("Работаю дизайнером")},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    assert repair_workspace_json(tmp_path) == (profile,)
+
+    updated = {"context": "Работаю дизайнером", "legitimate_code": "РЎ"}
+    profile.write_text(json.dumps(updated, ensure_ascii=False), encoding="utf-8")
+
+    assert repair_workspace_json(tmp_path) == ()
+    assert json.loads(profile.read_text(encoding="utf-8")) == updated
 
 
 def test_repair_mojibake_text_supports_windows_1252() -> None:
@@ -326,6 +349,40 @@ def test_existing_partial_backup_is_replaced_before_source_repair(tmp_path: Path
 
     assert backup.read_text(encoding="utf-8") == original
     assert json.loads(path.read_text(encoding="utf-8"))["goal"] == "Завершить макет"
+
+
+def test_backup_directory_entry_is_synced_before_live_replace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "profile.json"
+    path.write_text(
+        json.dumps({"goal": _legacy_decode("Завершить макет")}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    events: list[tuple[str, Path]] = []
+    real_writer = encoding_recovery.write_json_atomic_unlocked
+
+    def record_directory_sync(candidate: Path) -> None:
+        events.append(("backup-synced", candidate))
+
+    def record_live_write(candidate: Path, payload: Any) -> None:
+        events.append(("live-write", candidate))
+        real_writer(candidate, payload)
+
+    monkeypatch.setattr(
+        encoding_recovery,
+        "fsync_parent_directory",
+        record_directory_sync,
+    )
+    monkeypatch.setattr(
+        encoding_recovery,
+        "write_json_atomic_unlocked",
+        record_live_write,
+    )
+
+    assert repair_json_file(path) is True
+    assert [event for event, _path in events] == ["backup-synced", "live-write"]
 
 
 def test_existing_valid_backup_is_immutable_and_new_source_gets_snapshot(

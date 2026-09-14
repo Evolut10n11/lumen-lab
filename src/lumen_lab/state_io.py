@@ -2,11 +2,65 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
+_LOCK_TIMEOUT_SECONDS = 10.0
+_LOCK_RETRY_SECONDS = 0.05
+
+
+def _try_lock(stream: Any) -> None:
+    stream.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock(stream: Any) -> None:
+    stream.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
+def _acquire_lock(stream: Any) -> None:
+    deadline = time.monotonic() + _LOCK_TIMEOUT_SECONDS
+    while True:
+        try:
+            _try_lock(stream)
+            return
+        except OSError as error:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("timed out waiting for Lumen workspace lock") from error
+            time.sleep(min(_LOCK_RETRY_SECONDS, remaining))
+
+
+def fsync_parent_directory(path: Path) -> None:
+    """Persist a completed rename on filesystems that support directory fsync."""
+
+    if os.name == "nt":
+        return
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    descriptor = os.open(path.parent, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 @contextmanager
@@ -17,26 +71,15 @@ def json_path_lock(path: Path) -> Iterator[None]:
     lock_path = path.parent / ".lumen-json.lock"
     with lock_path.open("a+b") as stream:
         if os.name == "nt":
-            import msvcrt
-
             stream.seek(0, os.SEEK_END)
             if stream.tell() == 0:
                 stream.write(b"\0")
                 stream.flush()
-            stream.seek(0)
-            msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
-        else:
-            import fcntl
-
-            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        _acquire_lock(stream)
         try:
             yield
         finally:
-            stream.seek(0)
-            if os.name == "nt":
-                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+            _unlock(stream)
 
 
 def write_json_atomic_unlocked(path: Path, payload: Any) -> None:
@@ -54,6 +97,7 @@ def write_json_atomic_unlocked(path: Path, payload: Any) -> None:
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
+        fsync_parent_directory(path)
     finally:
         if temporary.exists():
             temporary.unlink()
