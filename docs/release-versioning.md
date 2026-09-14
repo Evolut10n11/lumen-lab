@@ -9,7 +9,7 @@ For a desktop release, the same semantic version must be present in:
 - `apps/desktop/src-tauri/Cargo.toml`;
 - `apps/desktop/src-tauri/tauri.conf.json`.
 
-`tauri.conf.json` is the release-facing version used to validate Git tags. A tagged release must use exactly `v<desktop-version>`; for example, desktop version `0.1.4` must be released from tag `v0.1.4`. The Windows Installer workflow validates every listed desktop manifest before building and compares tagged release names case-sensitively. Before creating a new release, it checks the remote tag against the exact build commit, including peeled annotated tags. A tag pointing to another commit or a failed remote lookup stops publication. Existing releases remain unchanged. The shared guard is `packaging/check_release.py`.
+`tauri.conf.json` is the release-facing version used to validate Git tags. A tagged release must use exactly `v<desktop-version>`; for example, desktop version `0.2.0` must be released from tag `v0.2.0`. The Windows Installer workflow validates every listed desktop manifest before building and compares tagged release names case-sensitively. Before creating a new release, it checks the remote tag against the exact build commit, including peeled annotated tags. A tag pointing to another commit or a failed remote lookup stops publication. Existing releases remain unchanged. The shared guard is `packaging/check_release.py`.
 
 The npm lockfile mirrors the package version in addition to locking the dependency graph. Version bumps should therefore update `package.json` and `package-lock.json` together; `tests/test_npm_lockfile_contract.py` and `tests/test_release_version_contract.py` both guard against metadata drift.
 

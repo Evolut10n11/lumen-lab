@@ -44,3 +44,12 @@ def test_release_workflow_validates_manifests_and_tag_provenance() -> None:
     workflow = (ROOT / ".github/workflows/windows-installer.yml").read_text(encoding="utf-8")
     assert 'python packaging/check_release.py --ref "$env:RELEASE_REF"' in workflow
     assert 'python3 packaging/check_release.py --ref "$GITHUB_REF" --sha "$GITHUB_SHA"' in workflow
+
+
+def test_release_workflow_publishes_curated_notes_when_present() -> None:
+    workflow = (ROOT / ".github/workflows/windows-installer.yml").read_text(encoding="utf-8")
+
+    assert 'notes_file="docs/release-notes-${tag}.md"' in workflow
+    assert 'release_notes=(--notes-file "$notes_file")' in workflow
+    assert 'release_notes=(--generate-notes)' in workflow
+    assert '"${release_notes[@]}"' in workflow

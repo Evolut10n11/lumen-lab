@@ -180,15 +180,22 @@ jobs:
           # Network/auth failures must stop publication rather than look like a missing tag.
           python3 packaging/check_release.py --ref "$GITHUB_REF" --sha "$GITHUB_SHA"
 
+          notes_file="docs/release-notes-${tag}.md"
+          if [[ -f "$notes_file" ]]; then
+            release_notes=(--notes-file "$notes_file")
+          else
+            release_notes=(--generate-notes)
+          fi
+
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             gh release create "$tag" release-assets/*.exe \
               --repo "${GITHUB_REPOSITORY}" \
-              --generate-notes \
+              "${release_notes[@]}" \
               --title "Lumen $tag"
           else
             gh release create "$tag" release-assets/*.exe \
               --repo "${GITHUB_REPOSITORY}" \
               --target "${GITHUB_SHA}" \
-              --generate-notes \
+              "${release_notes[@]}" \
               --title "Lumen $tag"
           fi
