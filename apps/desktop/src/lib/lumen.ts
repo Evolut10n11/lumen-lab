@@ -170,6 +170,11 @@ export type Dashboard = {
     title: string;
     score: number;
   }>;
+  paused: Array<{
+    id: string;
+    title: string;
+    why_now: string;
+  }>;
   personalization: {
     adapting: boolean;
     signal_count: number;
@@ -207,6 +212,13 @@ export type GuidedOnboardingInput = {
   displayName: string;
   currentContext: string;
   desiredChange: string;
+  friction: string;
+  focusMinutes: 15 | 30 | 60;
+};
+
+export type DirectionRevisionInput = {
+  desiredChange: string;
+  currentContext: string;
   friction: string;
   focusMinutes: 15 | 30 | 60;
 };
@@ -300,6 +312,22 @@ export function answerClarification(
     clarification_id: clarificationId,
     choice,
   });
+}
+
+export function reviseDirection(
+  userId: string,
+  input: DirectionRevisionInput,
+): Promise<Dashboard> {
+  return request<Dashboard>("revise_direction", userId, {
+    desired_change: input.desiredChange,
+    current_context: input.currentContext,
+    friction: input.friction,
+    focus_minutes: input.focusMinutes,
+  });
+}
+
+export function resumeMission(userId: string, missionId: string): Promise<Dashboard> {
+  return request<Dashboard>("resume_mission", userId, { mission_id: missionId });
 }
 
 export function previewGitHub(

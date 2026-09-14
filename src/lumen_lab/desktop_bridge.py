@@ -308,6 +308,18 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         clear_github_context_missions(workspace)
         return _dashboard_with_context(app, user_id, locale=locale)
 
+    if action == "resume_mission":
+        mission_id = payload.get("mission_id")
+        if not isinstance(mission_id, str) or not mission_id.strip():
+            raise ValueError("mission_id must be a non-empty string")
+        dashboard = app.resume_mission(
+            mission_id,
+            user_id,
+            top=int(payload.get("top", 3)),
+            locale=locale,
+        )
+        return _decorate_dashboard(app, user_id, dashboard, locale=locale)
+
     if action == "react":
         reaction = payload.get("reaction")
         mission_id = payload.get("mission_id")
@@ -398,6 +410,13 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
                 tags=[goal],
                 sentiment="like" if "confirm_goal" in effects else "dislike",
             )
+        deprioritized_goal = effects.get("deprioritize_goal")
+        if isinstance(deprioritized_goal, str) and deprioritized_goal.strip():
+            app.pause_goal(deprioritized_goal, user_id)
+
+        resume_mission_id = effects.get("resume_mission_id")
+        if isinstance(resume_mission_id, str) and resume_mission_id:
+            app.resume_mission(resume_mission_id, user_id, locale=locale)
 
         disliked_mission_id = effects.get("dislike_mission_id")
         if isinstance(disliked_mission_id, str) and disliked_mission_id:

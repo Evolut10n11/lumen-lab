@@ -9,6 +9,8 @@ import {
   Clock3,
   Home,
   Loader2,
+  PencilLine,
+  RotateCcw,
   Sparkles,
   Target,
   X,
@@ -20,9 +22,12 @@ import {
   bootstrap,
   completeStep,
   Dashboard,
+  DirectionRevisionInput,
   guidedOnboard,
   Locale,
   reactToMission,
+  resumeMission,
+  reviseDirection,
   setRequestLocale,
 } from "./lib/lumen";
 
@@ -471,7 +476,12 @@ function MissionScreen({ dashboard, onComplete, locale }: {
   );
 }
 
-function ActivityScreen({ dashboard, locale }: { dashboard: Dashboard; locale: Locale }) {
+function ActivityScreen({ dashboard, locale, onResume, working }: {
+  dashboard: Dashboard;
+  locale: Locale;
+  onResume: (missionId: string) => void;
+  working: boolean;
+}) {
   const t = copy(locale).activity;
   return (
     <section className="screen-content">
@@ -493,17 +503,83 @@ function ActivityScreen({ dashboard, locale }: { dashboard: Dashboard; locale: L
           </div>
         ))}
       </div>
+      {dashboard.paused.length > 0 && (
+        <>
+          <div className="section-heading compact">
+            <div>
+              <span className="eyebrow">{t.paused}</span>
+              <h2>{t.pausedTitle}</h2>
+              <p className="section-description">{t.pausedBody}</p>
+            </div>
+          </div>
+          <div className="radar-list">
+            {dashboard.paused.map((mission) => (
+              <div className="radar-row paused-row" key={mission.id}>
+                <span className="radar-rank"><RotateCcw size={15} /></span>
+                <div className="radar-copy"><strong>{mission.title}</strong><span>{mission.why_now}</span></div>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={working}
+                  onClick={() => onResume(mission.id)}
+                >
+                  {t.resume}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
 
-function ProfileScreen({ dashboard, onDashboard, locale, onLocale }: {
+function ProfileScreen({ dashboard, onDashboard, locale, onLocale, onRevise, working }: {
   dashboard: Dashboard;
   onDashboard: (dashboard: Dashboard) => void;
   locale: Locale;
   onLocale: (locale: Locale) => void;
+  onRevise: (input: DirectionRevisionInput) => Promise<boolean>;
+  working: boolean;
 }) {
   const t = copy(locale).profile;
+  const answers = dashboard.context?.answers;
+  const resolvedFocus = answers?.focus_minutes === 15 || answers?.focus_minutes === 60
+    ? answers.focus_minutes
+    : 30;
+  const [editingDirection, setEditingDirection] = useState(false);
+  const [desiredChange, setDesiredChange] = useState(
+    answers?.desired_change ?? Object.keys(dashboard.user.priorities ?? {})[0] ?? "",
+  );
+  const [currentContext, setCurrentContext] = useState(answers?.current_context ?? "");
+  const [friction, setFriction] = useState(answers?.friction ?? "");
+  const [focusMinutes, setFocusMinutes] = useState<15 | 30 | 60>(resolvedFocus);
+
+  const openDirection = () => {
+    const latest = dashboard.context?.answers;
+    setDesiredChange(
+      latest?.desired_change ?? Object.keys(dashboard.user.priorities ?? {})[0] ?? "",
+    );
+    setCurrentContext(latest?.current_context ?? "");
+    setFriction(latest?.friction ?? "");
+    setFocusMinutes(latest?.focus_minutes === 15 || latest?.focus_minutes === 60
+      ? latest.focus_minutes
+      : 30);
+    setEditingDirection(true);
+  };
+
+  const submitDirection = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!desiredChange.trim() || working) return;
+    const saved = await onRevise({
+      desiredChange: desiredChange.trim(),
+      currentContext: currentContext.trim(),
+      friction: friction.trim(),
+      focusMinutes,
+    });
+    if (saved) setEditingDirection(false);
+  };
+
   return (
     <section className="screen-content">
       <header className="topbar">
@@ -516,6 +592,79 @@ function ProfileScreen({ dashboard, onDashboard, locale, onLocale }: {
           <h2>{t.personalTitle}</h2>
           <p>{t.personalBody}</p>
         </div>
+      </div>
+
+      <div className="direction-card">
+        <div className="direction-card-header">
+          <div>
+            <span className="card-kicker">{t.changeDirection}</span>
+            <p>{t.directionBody}</p>
+          </div>
+          {!editingDirection && (
+            <button className="ghost-button" type="button" onClick={openDirection}>
+              <PencilLine size={15} /> {t.changeDirection}
+            </button>
+          )}
+        </div>
+        {editingDirection && (
+          <form className="direction-form" onSubmit={submitDirection}>
+            <label className="field-label">
+              <span>{t.desiredChange}</span>
+              <textarea
+                value={desiredChange}
+                onChange={(event) => setDesiredChange(event.target.value)}
+                placeholder={t.desiredPlaceholder}
+                rows={3}
+                maxLength={1200}
+                required
+              />
+            </label>
+            <div className="direction-form-grid">
+              <label className="field-label">
+                <span>{t.currentContext}</span>
+                <textarea
+                  value={currentContext}
+                  onChange={(event) => setCurrentContext(event.target.value)}
+                  rows={3}
+                  maxLength={1200}
+                />
+              </label>
+              <label className="field-label">
+                <span>{t.friction}</span>
+                <textarea
+                  value={friction}
+                  onChange={(event) => setFriction(event.target.value)}
+                  rows={3}
+                  maxLength={1200}
+                />
+              </label>
+            </div>
+            <fieldset className="direction-focus">
+              <legend>{t.focusWindow}</legend>
+              <div className="focus-choice-grid compact-focus">
+                {([15, 30, 60] as const).map((minutes) => (
+                  <button
+                    className={focusMinutes === minutes ? "focus-choice active" : "focus-choice"}
+                    key={minutes}
+                    type="button"
+                    onClick={() => setFocusMinutes(minutes)}
+                  >
+                    <strong>{minutes}</strong><span>{copy(locale).onboarding.minutes}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <div className="direction-actions">
+              <button className="primary-button" type="submit" disabled={working || !desiredChange.trim()}>
+                {working ? <Loader2 className="spin" size={15} /> : <Check size={15} />}
+                {t.saveDirection}
+              </button>
+              <button className="text-button" type="button" onClick={() => setEditingDirection(false)} disabled={working}>
+                {t.cancel}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {dashboard.context && (
@@ -604,10 +753,10 @@ export default function App() {
   const content = useMemo(() => {
     if (!dashboard) return null;
     if (screen === "mission") return <MissionScreen dashboard={dashboard} onComplete={handleComplete} locale={locale} />;
-    if (screen === "activity") return <ActivityScreen dashboard={dashboard} locale={locale} />;
-    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} locale={locale} onLocale={changeLocale} />;
+    if (screen === "activity") return <ActivityScreen dashboard={dashboard} locale={locale} onResume={handleResume} working={working} />;
+    if (screen === "profile") return <ProfileScreen dashboard={dashboard} onDashboard={setDashboard} locale={locale} onLocale={changeLocale} onRevise={handleRevise} working={working} />;
     return <HomeScreen dashboard={dashboard} setScreen={setScreen} onReact={handleReact} onClarify={handleClarify} locale={locale} />;
-  }, [dashboard, screen, locale]);
+  }, [dashboard, screen, locale, working]);
 
   async function handleReact(action: "more_like_this" | "not_now" | "less_like_this", missionId: string) {
     if (!dashboard || working) return;
@@ -643,6 +792,35 @@ export default function App() {
       setDashboard(await completeStep(dashboard.user.id, dashboard.today.mission_id, step));
     } catch (err) {
       setError(errorMessage(err, appCopy.progressError));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleResume(missionId: string) {
+    if (!dashboard || working) return;
+    setWorking(true);
+    setError(null);
+    try {
+      setDashboard(await resumeMission(dashboard.user.id, missionId));
+    } catch (err) {
+      setError(errorMessage(err, appCopy.resumeError));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleRevise(input: DirectionRevisionInput): Promise<boolean> {
+    if (!dashboard || working) return false;
+    setWorking(true);
+    setError(null);
+    try {
+      setDashboard(await reviseDirection(dashboard.user.id, input));
+      setScreen("home");
+      return true;
+    } catch (err) {
+      setError(errorMessage(err, appCopy.directionError));
+      return false;
     } finally {
       setWorking(false);
     }
