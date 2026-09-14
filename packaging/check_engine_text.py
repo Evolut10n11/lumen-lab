@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import tempfile
+from math import isfinite
 from pathlib import Path
 from statistics import median
 from time import perf_counter
@@ -24,8 +25,8 @@ FRICTION = "Мало времени — только полчаса"
 
 def positive_milliseconds(value: str) -> float:
     parsed = float(value)
-    if parsed <= 0:
-        raise argparse.ArgumentTypeError("timing budgets must be greater than zero")
+    if not isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("timing budgets must be finite and greater than zero")
     return parsed
 
 
