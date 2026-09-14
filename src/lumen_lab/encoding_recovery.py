@@ -45,13 +45,12 @@ def _repair_whole_text(value: str, *, allow_single_units: bool) -> str:
         marker_reduction = before_score - candidate_score
         strong_single_unit = (
             allow_single_units
-            and marker_reduction == 1
             and len(candidate) < len(value)
             and _is_single_cyrillic_unit(value, candidate, encoding)
             and candidate.encode("utf-8").decode(encoding) == value
         )
         if candidate != value and (marker_reduction >= 2 or strong_single_unit):
-            if candidate_score < best_score:
+            if (candidate_score, len(candidate)) < (best_score, len(best)):
                 best = candidate
                 best_score = candidate_score
     return best
@@ -95,7 +94,9 @@ def repair_mojibake_text(value: str, *, allow_single_units: bool = False) -> str
             repaired = whole
             evidence_found = True
             continue
-        parts = re.split(r"(\s+)", repaired)
+        # Split only protocol whitespace. A cp1251 decoding of the UTF-8 bytes
+        # for Cyrillic `Р` contains U+00A0, which must stay inside its fragment.
+        parts = re.split(r"([ \t\r\n]+)", repaired)
         segmented = "".join(
             part
             if part.isspace()
@@ -159,7 +160,11 @@ def repair_mojibake_json(value: Any, *, allow_single_units: bool | None = None) 
 
 def _backup_original(path: Path, backup: Path) -> None:
     if backup.exists():
-        return
+        try:
+            if backup.read_bytes() == path.read_bytes():
+                return
+        except OSError:
+            pass
     temporary = backup.with_name(f".{backup.name}.{uuid.uuid4().hex}.tmp")
     try:
         shutil.copy2(path, temporary)

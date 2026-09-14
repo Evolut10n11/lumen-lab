@@ -100,7 +100,13 @@ def test_workspace_evidence_allows_short_fragment_repair_across_files(
     profile = tmp_path / "profile.json"
     context = tmp_path / "onboarding_context.json"
     profile.write_text(
-        json.dumps({"goal": _legacy_decode("Я")}, ensure_ascii=False),
+        json.dumps(
+            {
+                "goal": _legacy_decode("Я"),
+                "letters": [_legacy_decode("Р"), _legacy_decode("С")],
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     context.write_text(
@@ -111,7 +117,9 @@ def test_workspace_evidence_allows_short_fragment_repair_across_files(
     repaired = repair_workspace_json(tmp_path)
 
     assert set(repaired) == {profile, context}
-    assert json.loads(profile.read_text(encoding="utf-8"))["goal"] == "Я"
+    repaired_profile = json.loads(profile.read_text(encoding="utf-8"))
+    assert repaired_profile["goal"] == "Я"
+    assert repaired_profile["letters"] == ["Р", "С"]
     assert json.loads(context.read_text(encoding="utf-8"))["context"] == (
         "Работаю дизайнером"
     )
@@ -169,6 +177,19 @@ def test_failed_backup_copy_cannot_leave_a_partial_final_backup(
     monkeypatch.setattr(encoding_recovery.shutil, "copy2", real_copy)
     assert repair_json_file(path) is True
     assert backup.read_text(encoding="utf-8") == original
+
+
+def test_existing_partial_backup_is_replaced_before_source_repair(tmp_path: Path) -> None:
+    path = tmp_path / "profile.json"
+    original = json.dumps({"goal": _legacy_decode("Завершить макет")}, ensure_ascii=False)
+    path.write_text(original, encoding="utf-8")
+    backup = path.with_name(f"{path.name}.before-encoding-repair")
+    backup.write_bytes(b"partial")
+
+    assert repair_json_file(path) is True
+
+    assert backup.read_text(encoding="utf-8") == original
+    assert json.loads(path.read_text(encoding="utf-8"))["goal"] == "Завершить макет"
 
 
 def test_bootstrap_repairs_legacy_windows_state_without_reonboarding(

@@ -5,7 +5,7 @@ Lumen 0.2.2 completes the automatic recovery of Russian text saved by older Wind
 ## What changed
 
 - Short one-character Cyrillic words such as `Я` are restored when they appear inside otherwise-correct localized mission text.
-- Pre-repair backups are copied to a temporary file and moved into place atomically, so an interrupted copy cannot be mistaken for a complete backup on the next launch.
+- Pre-repair backups are copied to a temporary file and moved into place atomically. A partial backup left by v0.2.1 is detected against the still-pristine live source and safely replaced before repair.
 - Existing recovery behavior for Windows-1251, Windows-1252, Latin-1, mixed localized strings, and colliding JSON keys remains covered.
 
 ## Compatibility
