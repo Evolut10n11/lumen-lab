@@ -49,10 +49,14 @@ def test_timing_budget_remains_optional() -> None:
     assert ASSERT_TIMING_BUDGET(_timings(9000)) == (9000, 9000)
 
 
-def test_cli_budget_values_must_be_positive() -> None:
-    assert POSITIVE_MILLISECONDS("2500") == 2500
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf"])
+def test_cli_budget_values_must_be_positive_and_finite(value: str) -> None:
     with pytest.raises(argparse.ArgumentTypeError):
-        POSITIVE_MILLISECONDS("0")
+        POSITIVE_MILLISECONDS(value)
+
+
+def test_cli_budget_accepts_positive_finite_value() -> None:
+    assert POSITIVE_MILLISECONDS("2500") == 2500
 
 
 def test_windows_workflow_applies_budget_to_both_engine_checks() -> None:
