@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "apps/desktop/**"
+      - "rust-toolchain.toml"
       - ".github/workflows/desktop-ci.yml"
   pull_request:
     paths:
       - "apps/desktop/**"
+      - "rust-toolchain.toml"
       - ".github/workflows/desktop-ci.yml"
 
 permissions:
@@ -54,9 +56,5 @@ jobs:
             libssl-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
-      - name: Use stable Rust
-        run: |
-          rustup update stable
-          rustup default stable
       - name: Check Tauri host
         run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
